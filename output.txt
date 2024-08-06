@@ -1,0 +1,88 @@
+Using device: cuda
+Pre-trained initial generator loaded!
+Epoch [1/50], Avg G Loss: 0.01874
+New best model saved with G Loss: 0.01874
+Epoch [2/50], Avg G Loss: 0.01864
+New best model saved with G Loss: 0.01864
+Epoch [3/50], Avg G Loss: 0.01856
+New best model saved with G Loss: 0.01856
+Epoch [4/50], Avg G Loss: 0.01849
+New best model saved with G Loss: 0.01849
+Epoch [5/50], Avg G Loss: 0.01845
+New best model saved with G Loss: 0.01845
+Epoch [6/50], Avg G Loss: 0.01831
+New best model saved with G Loss: 0.01831
+Epoch [7/50], Avg G Loss: 0.01826
+New best model saved with G Loss: 0.01826
+Epoch [8/50], Avg G Loss: 0.01817
+New best model saved with G Loss: 0.01817
+Epoch [9/50], Avg G Loss: 0.01810
+New best model saved with G Loss: 0.01810
+Epoch [10/50], Avg G Loss: 0.01806
+New best model saved with G Loss: 0.01806
+Epoch [11/50], Avg G Loss: 0.01797
+New best model saved with G Loss: 0.01797
+Epoch [12/50], Avg G Loss: 0.01795
+New best model saved with G Loss: 0.01795
+Epoch [13/50], Avg G Loss: 0.01787
+New best model saved with G Loss: 0.01787
+Epoch [14/50], Avg G Loss: 0.01781
+New best model saved with G Loss: 0.01781
+Epoch [15/50], Avg G Loss: 0.01773
+New best model saved with G Loss: 0.01773
+Epoch [16/50], Avg G Loss: 0.01768
+New best model saved with G Loss: 0.01768
+Epoch [17/50], Avg G Loss: 0.01762
+New best model saved with G Loss: 0.01762
+Epoch [18/50], Avg G Loss: 0.01757
+New best model saved with G Loss: 0.01757
+Epoch [19/50], Avg G Loss: 0.01752
+New best model saved with G Loss: 0.01752
+Epoch [20/50], Avg G Loss: 0.01745
+New best model saved with G Loss: 0.01745
+Epoch [21/50], Avg G Loss: 0.01742
+New best model saved with G Loss: 0.01742
+Epoch [22/50], Avg G Loss: 0.01738
+New best model saved with G Loss: 0.01738
+Epoch [23/50], Avg G Loss: 0.01731
+New best model saved with G Loss: 0.01731
+Epoch [24/50], Avg G Loss: 0.01725
+New best model saved with G Loss: 0.01725
+Epoch [25/50], Avg G Loss: 0.01720
+New best model saved with G Loss: 0.01720
+Epoch [26/50], Avg G Loss: 0.01718
+New best model saved with G Loss: 0.01718
+Epoch [27/50], Avg G Loss: 0.01710
+New best model saved with G Loss: 0.01710
+Epoch [28/50], Avg G Loss: 0.01710
+No improvement for 1 epochs during initialization.
+Epoch [29/50], Avg G Loss: 0.01706
+New best model saved with G Loss: 0.01706
+Epoch [30/50], Avg G Loss: 0.01698
+New best model saved with G Loss: 0.01698
+Epoch [31/50], Avg G Loss: 0.01697
+No improvement for 1 epochs during initialization.
+Epoch [32/50], Avg G Loss: 0.01687
+New best model saved with G Loss: 0.01687
+Epoch [33/50], Avg G Loss: 0.01686
+New best model saved with G Loss: 0.01686
+Epoch [34/50], Avg G Loss: 0.01682
+New best model saved with G Loss: 0.01682
+Epoch [35/50], Avg G Loss: 0.01685
+No improvement for 1 epochs during initialization.
+Epoch [36/50], Avg G Loss: 0.01674
+New best model saved with G Loss: 0.01674
+Epoch [37/50], Avg G Loss: 0.01669
+New best model saved with G Loss: 0.01669
+Epoch [38/50], Avg G Loss: 0.01671
+No improvement for 1 epochs during initialization.
+Epoch [39/50], Avg G Loss: 0.01660
+New best model saved with G Loss: 0.01660
+Epoch [40/50], Avg G Loss: 0.01666
+No improvement for 1 epochs during initialization.
+Epoch [41/50], Avg G Loss: 0.01654
+New best model saved with G Loss: 0.01654
+Epoch [42/50], Avg G Loss: 0.01651
+New best model saved with G Loss: 0.01651
+Epoch [43/50], Avg G Loss: 0.01648
+New best model saved with G Loss: 0.01648
