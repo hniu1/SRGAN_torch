@@ -1,6 +1,6 @@
 import os
 # Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,2,3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import time
 import numpy as np
@@ -25,23 +25,30 @@ parser.add_argument('--mode', type=str, default='train', help='train, eval')
 args = parser.parse_args()
 
 
-
 # Check if CUDA is available and set the device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# print(f"Using device: {device}")
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    num_gpus = torch.cuda.device_count()
+    print(f"CUDA is available. Number of GPUs: {num_gpus}")
+else:
+    device = torch.device('cpu')
+    num_gpus = 0
+    print("CUDA is not available. Using CPU.")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
 batch_size = 16
-n_epoch_init = 50
-n_epoch = 500
+n_epoch_init = 100
+n_epoch = 300
 # create folders to save result images and trained models
-version = 'v0.4' # check the version.txt file for historical versions under output directory
+version = 'v0.5' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = False
 elevation_hr = False
 initial_training = True
-readrawdata  = False
+readrawdata  = True
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'

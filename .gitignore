@@ -1,2 +1,9 @@
 models/
 output/
+dataread.py
+__pycache__/dataread.cpython-38.pyc
+__pycache__/loss_torch.cpython-38.pyc
+__pycache__/srgan_torch.cpython-38.pyc
+slurm-error.txt
+slurm-output.txt
+dataread.py
