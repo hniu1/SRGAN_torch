@@ -33,7 +33,7 @@ class WithLoss_G(nn.Module):
         g_gan_loss = 1e-4 * self.loss_fn1(logits_fake, torch.ones_like(logits_fake)) # one means real image, default 1e-4
         g_gan_loss = torch.mean(g_gan_loss)
         
-        mse_loss = self.loss_fn2(fake_patches, hr)
+        mse_loss = 1e4 * self.loss_fn2(fake_patches, hr)
         g_loss = mse_loss + g_gan_loss
         return g_loss
     

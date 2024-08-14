@@ -1,5 +1,12 @@
 models/
 output/
+data_explore.py
+hist_data/
+__pycache__/dataread.cpython-39.pyc
+__pycache__/loss_torch.cpython-39.pyc
+__pycache__/scalers.cpython-39.pyc
+__pycache__/srgan_torch.cpython-39.pyc
+
 dataread.py
 __pycache__/dataread.cpython-38.pyc
 __pycache__/loss_torch.cpython-38.pyc

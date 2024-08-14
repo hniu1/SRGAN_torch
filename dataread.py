@@ -4,6 +4,7 @@ from netCDF4 import Dataset
 import cv2
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from sklearn.model_selection import train_test_split
+from scalers import Log1pScaler
 #import keras
 #from keras.models import Sequential
 import datetime
@@ -26,13 +27,15 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
         if not Daymet_ERA5:
             fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
         else:
-            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
+            fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
+            # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
+
         hr_var     = fil.variables[f'{var}'][:]
         arrays.append(np.array(hr_var))
     data = np.concatenate(arrays, axis=0)
     data[np.isnan(data)] = 0
     data[data < 0] = 0
-
+    data = data.astype('float32')
     return data
 
 def read_elev(tt, deg=1):
@@ -82,7 +85,7 @@ def invtrans_write(y,scalar,name,path_output,elevation=False):
     #     elev_scale_inv   = scalar.inverse_transform(elev_scale.reshape(-1, 1))
     #     elev_scale_inv   = np.reshape(elev_scale_inv,(tt,nhr1,nhr2))
 
-def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False):
+def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False, scaler = 'standard'):
 
 # Read variables nd generate low resolution version
     deg_hr = 0.25
@@ -97,8 +100,8 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
         lr_prect = read_Daymet_yearly("prcp", year_start=2003, year_end=2023,deg=deg_lr)
         hr_prect = read_Daymet_yearly("prcp", year_start=2003, year_end=2023, deg=deg_hr)
     else:
-        lr_prect = read_Daymet_yearly("pr", year_start=2000, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5)
-        hr_prect = read_Daymet_yearly("pr", year_start=2000, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
+        lr_prect = read_Daymet_yearly("prcp", year_start=1990, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5)
+        hr_prect = read_Daymet_yearly("prcp", year_start=1990, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
     # time = np.reshape(time,(tt,nhr1,nhr2,1))
     print(f'hr shape: {np.shape(hr_prect)}')
     print(f'lr shape: {np.shape(lr_prect)}')
@@ -109,9 +112,17 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     nlr2 = lr_prect.shape[2]
     tt = hr_prect.shape[0]
 # Scale high-resolution precipitation ("y")
-    scaler_hrprect  = StandardScaler()
-    # scaler_hrprect  = RobustScaler()
-    # scaler_hrprect  = MinMaxScaler(feature_range=(-1, 1))
+    if scaler == 'standard':
+        scaler_hrprect  = StandardScaler()
+    elif scaler == 'robust':
+        scaler_hrprect  = RobustScaler()
+    elif scaler == 'minmax':
+        scaler_hrprect  = MinMaxScaler()
+    elif scaler == 'log':
+        scaler_hrprect  = Log1pScaler()
+    else:
+        scaler_hrprect  = StandardScaler()
+
     hr_prect        = hr_prect.flatten()
     lr_prect        = lr_prect.flatten()
     combined_images = np.concatenate([hr_prect, lr_prect], axis=0)
@@ -128,7 +139,7 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     lr = lr_prect_scaled[:,:,:,:]
     
     if elevation:
-        scaler_elev  = StandardScaler()
+        scaler_elev  = MinMaxScaler()
         elev = read_elev(tt)
         scaler_elev.fit(elev.flatten().reshape(-1, 1))
         elev_scaled = scaler_elev.transform(elev.flatten().reshape(-1, 1))
