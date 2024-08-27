@@ -179,7 +179,7 @@ def plot_loss(var,val,train,exp):
     plt.savefig(f'{path_output}/{var}_val_train_loss_{exp}.pdf')
 
 def plot_density_output(y_test, y_test_predict_init, y_test_predict):
-    bins = np.arange(-10, 400 + 5, 5)
+    bins = np.arange(-10, 450 + 5, 5)
     # Set up the matplotlib figure
     plt.figure(figsize=(10, 6))
     # Plot histogram for the first variable
@@ -234,7 +234,7 @@ def main():
 
 
 if __name__ == "__main__":
-    version = 'v1.0'
+    version = 'v3.3'
     version_diff = 'v0.1'
     path_output = f'./output/{version}'
     path_fig = f'./output/{version}/fig'

@@ -25,9 +25,10 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
     for year in range(year_start, year_end): #2023
         print(f'read {deg} degree data from year {year}')
         if not Daymet_ERA5:
-            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
+            fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
+            # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
         else:
-            fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
+            fil        = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
             # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
 
         hr_var     = fil.variables[f'{var}'][:]
@@ -39,7 +40,7 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
     return data
 
 def read_elev(tt, deg=1):
-    felev      = Dataset(f'/mnt/data/ClimateSR/daymet4x_US/US/VIC4_DEM_{deg}deg_US.nc')
+    felev      = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/VIC4a_DEM_{deg}deg.nc')
     elev1      = felev.variables["DEM"]
     elev       = np.tile(elev1,(tt,1,1))
     elev = elev.astype('float32')
