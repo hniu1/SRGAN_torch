@@ -40,7 +40,7 @@ version = 'v5.0' # check the version.txt file for historical versions under outp
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = True
+initial_training = False
 readrawdata  = False
 
 checkpoint_dir = f"models/{version}"

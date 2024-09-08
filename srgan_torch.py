@@ -1042,7 +1042,7 @@ class SRGAN_d_hr_odd(nn.Module):
         self.prelu5 = nn.PReLU()
         self.bn4 = nn.BatchNorm2d(num_features=dim * 2)
         self.flat = nn.Flatten()
-        self.dense = nn.Linear(in_features=57600,out_features=1)
+        self.dense = nn.Linear(in_features=1971072,out_features=1)
 
         # Initialize weights
         self._initialize_weights()
