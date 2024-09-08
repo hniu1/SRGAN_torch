@@ -12,7 +12,7 @@ class WithLoss_init(nn.Module):
 
     def forward(self, lr, hr):
         out = self.G_net(lr)
-        loss1 = self.loss_fn1(out, hr)
+        loss1 = 1e4 * self.loss_fn1(out, hr)
         # loss2 = self.loss_fn2(out, hr)
         return loss1
     

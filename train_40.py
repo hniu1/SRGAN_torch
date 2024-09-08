@@ -1,6 +1,6 @@
 import os
 # Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import time
 import numpy as np
@@ -32,11 +32,11 @@ print(f"Using device: {device}")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 128
+batch_size = 64
 n_epoch_init = 50
-n_epoch = 400
+n_epoch = 200
 # create folders to save result images and trained models
-version = 'v2.8' # check the version.txt file for historical versions under output directory
+version = 'v4.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
@@ -61,7 +61,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=False, scaler = 'log')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=False, scaler = 'minmax')
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
@@ -105,7 +105,7 @@ D = SRGAN_d_lr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # output = G(input_tensor)
 
 # Wrap models with DataParallel if using multiple GPUs
-if torch.cuda.device_count() > 1:
+if torch.cuda.device_count() >= 1:
     G = nn.DataParallel(G)
     D = nn.DataParallel(D)
 
