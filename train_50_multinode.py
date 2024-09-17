@@ -1,6 +1,6 @@
 import os
 # Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import time
 import numpy as np
@@ -14,9 +14,15 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26,SRGAN_g_hr_26_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
+
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
+from torch.cuda.amp import autocast, GradScaler
+
 
 
 # Argument parser
@@ -24,29 +30,63 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', type=str, default='train', help='train, eval')
 args = parser.parse_args()
 
+def setup_distributed():
+    # Manually set RANK, WORLD_SIZE, and LOCAL_RANK if not provided by SLURM
+    if 'RANK' not in os.environ:
+        os.environ['RANK'] = os.environ.get('SLURM_PROCID', '0')
+    if 'WORLD_SIZE' not in os.environ:
+        os.environ['WORLD_SIZE'] = os.environ.get('SLURM_NTASKS', '1')
+    if 'LOCAL_RANK' not in os.environ:
+        os.environ['LOCAL_RANK'] = os.environ.get('SLURM_LOCALID', '0')
+
+    print(f"RANK: {os.environ['RANK']}, LOCAL_RANK: {os.environ['LOCAL_RANK']}, WORLD_SIZE: {os.environ['WORLD_SIZE']}, \
+          MASTER_ADDR: {os.environ['MASTER_ADDR']}, MASTER_PORT: {os.environ['MASTER_PORT']}")
+
+    dist.init_process_group(backend='nccl', init_method='env://')
+
+    local_rank = int(os.environ['LOCAL_RANK'])
+    torch.cuda.set_device(local_rank)
+
+    # Print the GPU info from rank 0 (master)
+    if dist.get_rank() == 0:
+        world_size = os.environ['WORLD_SIZE']
+        num_gpus_per_node = torch.cuda.device_count()
+        # Calculate the number of nodes (total GPUs divided by GPUs per node)
+        num_nodes = int(world_size) // num_gpus_per_node
+        print(f"Total GPUs: {world_size}")
+        print(f"GPUs per node: {num_gpus_per_node}")
+        print(f"Number of nodes: {num_nodes}")
+
+    return local_rank
+
+def cleanup():
+    dist.destroy_process_group()
+
+# Get the world size and rank from the environment variables
+local_rank = setup_distributed()
+global_rank = dist.get_rank()
+
+# Get number of GPUs used
+num_gpus = torch.cuda.device_count()
+if local_rank == 0:  # Print from only the master node
+    print(f"Using {num_gpus} GPUs per node, across {global_rank // num_gpus} nodes.")
 
 
-# Check if CUDA is available and set the device
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-    num_gpus = torch.cuda.device_count()
-    print(f"CUDA is available. Number of GPUs: {num_gpus}")
-else:
-    device = torch.device('cpu')
-    num_gpus = 0
-    print("CUDA is not available. Using CPU.")
+# # Check if CUDA is available and set the device
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# print(f"Using device: {device}")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 8
+batch_size = 4
 n_epoch_init = 50
-n_epoch = 200
+n_epoch = 100
 # create folders to save result images and trained models
 version = 'v5.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = True
+initial_training = False
 readrawdata  = False
 
 checkpoint_dir = f"models/{version}"
@@ -64,6 +104,7 @@ def ReadSavedData(name, loaded_scaler):
     lr_test_scaled = np.reshape(lr_test_scaled,(shp[0],shp[1],shp[2],1))
     return lr_test_scaled
 
+
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
@@ -71,6 +112,22 @@ if args.mode == 'train' and readrawdata:
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
+
+    print(f"Rank {dist.get_rank()} got data...")
+    dist.barrier()
+
+    # Move the data to GPU after broadcasting
+    local_rank = torch.device(f'cuda:{local_rank}')
+    train_lr = torch.tensor(train_lr, device=local_rank)
+    train_hr = torch.tensor(train_hr, device=local_rank)
+    test_lr = torch.tensor(test_lr, device=local_rank)
+    test_hr = torch.tensor(test_hr, device=local_rank)
+
+    print(f"Rank {dist.get_rank()} has data on GPU {local_rank}: train_lr shape {train_lr.shape}")
+ 
+    # Synchronize all processes before broadcasting
+    dist.barrier()
+    
 else:
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
@@ -87,6 +144,13 @@ else:
             elev_hr_scaled = np.load(f'{path_output}/elev_hr_scaled.npy')
             train_hr = np.concatenate((train_hr,elev_hr_scaled[:np.shape(train_hr)[0]]),axis=3)
             test_hr = np.concatenate((test_hr,elev_hr_scaled[:np.shape(test_hr)[0]]),axis=3)
+    print(f"Rank {dist.get_rank()} got data...")
+    if dist.get_rank() == 0:
+        print(f"train_lr shape: {train_lr.shape}")
+        print(f"train_hr shape: {train_hr.shape}")
+        print(f"test_lr shape: {test_lr.shape}")
+        print(f"test_hr shape: {test_hr.shape}")
+    dist.barrier()
 
 class TrainData(Dataset):
     def __init__(self, lr_data, hr_data):
@@ -103,17 +167,22 @@ class TrainData(Dataset):
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_hr_26(in_channels=2).to(device)
+    G = SRGAN_g_hr_26_64RB(in_channels=2)
 else:
-    G = SRGAN_g_hr_26(in_channels=1).to(device)
-D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
+    G = SRGAN_g_hr_26_64RB(in_channels=1)
+D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1])
+
+# Wrap models with DistributedDataParallel
+G = DDP(G.to(local_rank), device_ids=[local_rank], find_unused_parameters=True)
+D = DDP(D.to(local_rank), device_ids=[local_rank], find_unused_parameters=True)
+
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
 
 # Wrap models with DataParallel if using multiple GPUs
-if torch.cuda.device_count() >= 1:
-    G = nn.DataParallel(G)
-    D = nn.DataParallel(D)
+# if torch.cuda.device_count() >= 1:
+#     G = nn.DataParallel(G)
+#     D = nn.DataParallel(D)
 
 def train():
     G.train() # set the model in training mode
@@ -121,8 +190,12 @@ def train():
 
      # Create datasets
     train_dataset = TrainData(train_lr, train_hr)
-    # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    # # Create data loaders
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+
+    # Assuming `train_dataset` is your dataset
+    train_sampler = DistributedSampler(train_dataset)  # Ensures each GPU gets its unique data
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=4)
 
     # Define optimizers
     g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
@@ -135,9 +208,9 @@ def train():
     d_lr_scheduler = torch.optim.lr_scheduler.StepLR(d_optimizer, step_size=100, gamma=0.8)
 
     # Define loss functions
-    criterion_gan = nn.BCEWithLogitsLoss().to(device)  # Equivalent of sigmoid_cross_entropy
-    criterion_content = nn.MSELoss().to(device)  # Mean Squared Error
-    criterion_absolute = nn.L1Loss().to(device)  # Absolute Difference Error
+    criterion_gan = nn.BCEWithLogitsLoss()
+    criterion_content = nn.MSELoss()
+    criterion_absolute = nn.L1Loss()
 
     # Define the loss functions for initial and adversarial training
     net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
@@ -157,50 +230,67 @@ def train():
         best_loss_init = float('inf')  # Track the best loss to compare against during init phase
         epochs_since_improvement_init = 0  # Track the number of epochs since last improvement during init phase
 
+         # Initialize GradScaler for mixed precision
+        scaler = GradScaler()
+
         if not readrawdata:
             if os.path.exists(os.path.join(checkpoint_dir, 'g_init.pth')):
                 G.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'g_init.pth')))
-                print("Pre-trained initial generator loaded!")
+                print(f"Rank {dist.get_rank()} Pre-trained initial generator loaded!")
             else:
-                print("No pre-trained generator model found.")
+                print(f"Rank {dist.get_rank()} No pre-trained generator model found.")
 
         # Initial training loop
         for epoch in range(n_epoch_init):
             g_loss_sum = 0
             n_steps = 0
+            # Synchronize between nodes
+            dist.barrier()
             for lr_patch, hr_patch in train_loader:
-                lr_patch = lr_patch.to(device)
-                hr_patch = hr_patch.to(device)
-
+                lr_patch = lr_patch.to(local_rank)
+                hr_patch = hr_patch.to(local_rank)
                 # Train the generator
                 g_optimizer_init.zero_grad()
-                loss = net_with_loss_init(lr_patch, hr_patch)
-                loss.backward()
-                g_optimizer_init.step()
+
+                with autocast():  # Enable mixed precision
+                    loss = net_with_loss_init(lr_patch, hr_patch)
+                # loss.backward()
+                # Scale the loss before backward pass
+                scaler.scale(loss).backward()
+                # Unscale the gradients and take an optimization step
+                scaler.step(g_optimizer_init)
+                # g_optimizer_init.step()
+                scaler.update()
 
                 g_loss_sum += loss.item()
                 n_steps += 1
 
-            g_loss_avg = g_loss_sum / n_steps
+            # Reduce the loss sum across all ranks (summing up losses from all ranks)
+            g_loss_sum_tensor = torch.tensor(g_loss_sum, device=local_rank)
+            dist.all_reduce(g_loss_sum_tensor, op=dist.ReduceOp.SUM)
+            # Calculate global average loss
+            g_loss_avg = g_loss_sum_tensor.item() / (n_steps * dist.get_world_size())
+            # g_loss_avg = g_loss_sum / n_steps
             g_init_losses.append(g_loss_avg)
             print(f"Epoch [{epoch+1}/{n_epoch_init}], Avg G Loss: {g_loss_avg:.8f}")
             
             g_lr_scheduler_init.step()
 
             # Check for improvement
-            if g_loss_avg < best_loss_init - min_delta_init:
-                best_loss_init = g_loss_avg
-                epochs_since_improvement_init = 0
-                # Save the best model
-                torch.save(G.state_dict(), os.path.join(checkpoint_dir, 'g_init.pth'))
-                print(f"New best model saved with G Loss: {best_loss_init:.8f}")
-            else:
-                epochs_since_improvement_init += 1
-                print(f"No improvement for {epochs_since_improvement_init} epochs during initialization.")
-            # Early stopping
-            if epochs_since_improvement_init >= no_improve_epochs_init:
-                print("Early stopping triggered during initial training.")
-                break
+            if dist.get_rank() == 0:
+                if g_loss_avg < best_loss_init - min_delta_init:
+                    best_loss_init = g_loss_avg
+                    epochs_since_improvement_init = 0
+                    # Save the best model only on rank 0
+                    torch.save(G.state_dict(), os.path.join(checkpoint_dir, 'g_init.pth'))
+                    print(f"New best model saved with G Loss: {best_loss_init:.8f}")
+                else:
+                    epochs_since_improvement_init += 1
+                    print(f"No improvement for {epochs_since_improvement_init} epochs during initialization.")
+                # Early stopping
+                if epochs_since_improvement_init >= no_improve_epochs_init:
+                    print("Early stopping triggered during initial training.")
+                    break
 
     #################################################################################
     # Adversarial learning with Early stop
@@ -219,23 +309,26 @@ def train():
             print("Pre-trained SRGAN loaded!")
         elif os.path.exists(os.path.join(checkpoint_dir, 'g_init.pth')):
             G.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'g_init.pth')))
-            print("Pre-trained initial generator loaded!")
+            print(f"Rank {dist.get_rank()} Pre-trained initial generator loaded!")
         else:
-            print("No pre-trained generator model found.")
+            print(f"Rank {dist.get_rank()} No pre-trained generator model found.")
 
     for epoch in range(n_epoch):
         g_loss_sum = 0
         d_loss_sum = 0
         n_steps = 0
+        # Synchronize between nodes
+        dist.barrier()
         for step, (lr_patch, hr_patch) in enumerate(train_loader):
-            lr_patch = lr_patch.to(device)
-            hr_patch = hr_patch.to(device)
+            lr_patch = lr_patch.to(local_rank)
+            hr_patch = hr_patch.to(local_rank)
             if epoch > 0:
                 # Train Generator
                 if d_loss < 0.7 or loss_g > 0.1:
                     g_optimizer.zero_grad()
-                    loss_g = net_with_loss_G(lr_patch, hr_patch)
-                    loss_g.backward()
+                    with autocast():  # Enable mixed precision
+                        loss_g = net_with_loss_G(lr_patch, hr_patch)
+                        loss_g.backward()
                     g_optimizer.step()
                 else:
                     with torch.no_grad(): # monitor g loss without train
@@ -264,8 +357,20 @@ def train():
             d_loss_sum += loss_d.item()
             n_steps += 1
 
-        g_loss = g_loss_sum / n_steps
-        d_loss = d_loss_sum / n_steps
+        # g_loss = g_loss_sum / n_steps
+        # d_loss = d_loss_sum / n_steps
+
+        # Reduce the loss sum across all ranks (summing up losses from all ranks)
+        g_loss_sum_tensor = torch.tensor(g_loss_sum, device=local_rank)
+        dist.all_reduce(g_loss_sum_tensor, op=dist.ReduceOp.SUM)
+        # Calculate global average loss
+        g_loss = g_loss_sum_tensor.item() / (n_steps * dist.get_world_size())
+
+        # Reduce the loss sum across all ranks (summing up losses from all ranks)
+        d_loss_sum_tensor = torch.tensor(d_loss_sum, device=local_rank)
+        dist.all_reduce(d_loss_sum_tensor, op=dist.ReduceOp.SUM)
+        # Calculate global average loss
+        d_loss = d_loss_sum_tensor.item() / (n_steps * dist.get_world_size())
 
         if np.isnan(g_loss) or np.isnan(d_loss):
             print(f"NaN detected in losses at Epoch {epoch}, Step {step}. Stopping training.")
@@ -276,65 +381,69 @@ def train():
         print(f"Epoch: [{epoch+1}/{n_epoch}], Avg G Loss: {g_loss:.8f}, Avg D Loss: {d_loss:.8f}")
 
         # Check for improvement in generator and discriminator
-        if g_loss < best_g_loss_adv - min_delta_adv:
-            best_g_loss_adv = g_loss
-            torch.save(G.state_dict(), os.path.join(checkpoint_dir, 'g.pth'))
-            torch.save(D.state_dict(), os.path.join(checkpoint_dir, 'd.pth'))
-            print(f"New best G model saved with G Loss: {best_g_loss_adv:.8f}")
-            epochs_since_improvement_adv = 0
-        else:
-            epochs_since_improvement_adv += 1
-            print(f"No improvement for {epochs_since_improvement_adv} epochs in adversarial phase.")
-        # Early stopping
-        if epochs_since_improvement_adv >= no_improve_epochs_adv:
-            print("Early stopping triggered during adversarial learning.")
-            break
+        if dist.get_rank() == 0:   
+            if g_loss < best_g_loss_adv - min_delta_adv:
+                best_g_loss_adv = g_loss
+                torch.save(G.state_dict(), os.path.join(checkpoint_dir, 'g.pth'))
+                torch.save(D.state_dict(), os.path.join(checkpoint_dir, 'd.pth'))
+                print(f"New best G model saved with G Loss: {best_g_loss_adv:.8f}")
+                epochs_since_improvement_adv = 0
+            else:
+                epochs_since_improvement_adv += 1
+                print(f"No improvement for {epochs_since_improvement_adv} epochs in adversarial phase.")
+            # Early stopping
+            if epochs_since_improvement_adv >= no_improve_epochs_adv:
+                print("Early stopping triggered during adversarial learning.")
+                break
 
         # Update learning rates
         g_lr_scheduler.step()
         d_lr_scheduler.step()
 
-    # save loss        
-    loss_data = {'g_init_losses': g_init_losses, 'g_losses': g_losses, 'd_losses': d_losses}
-    with open(f'./{checkpoint_dir}/avg_loss_data.json', 'w') as f:
-        json.dump(loss_data, f)
+    # Cleanup the distributed environment
+    cleanup()
+    if dist.get_rank() == 0:
+        # save loss        
+        loss_data = {'g_init_losses': g_init_losses, 'g_losses': g_losses, 'd_losses': d_losses}
+        with open(f'./{checkpoint_dir}/avg_loss_data.json', 'w') as f:
+            json.dump(loss_data, f)
 
-    g_init_losses = loss_data['g_init_losses']
-    g_losses = loss_data['g_losses']
-    d_losses = loss_data['d_losses']
-    # Plot initial training loss for the generator
-    plt.figure(figsize=(10, 5))
-    plt.plot(g_init_losses, label='G Init Losses', color='blue')
-    plt.title('Initial Training Loss for Generator')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f'{path_output}/initial_training_loss.png', dpi=300)
-    plt.close()
+        g_init_losses = loss_data['g_init_losses']
+        g_losses = loss_data['g_losses']
+        d_losses = loss_data['d_losses']
+        # Plot initial training loss for the generator
+        plt.figure(figsize=(10, 5))
+        plt.plot(g_init_losses, label='G Init Losses', color='blue')
+        plt.title('Initial Training Loss for Generator')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(f'{path_output}/initial_training_loss.png', dpi=300)
+        plt.close()
 
-    # Plot training loss for both the generator and the discriminator after initial training
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-    ax2 = ax1.twinx()
-    ax1.plot(g_losses, label='G Losses', color='blue')
-    ax2.plot(d_losses, label='D Losses', color='red')
-    fig.suptitle('Training Loss for Generator and Discriminator')
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('G Losses', color='blue')
-    ax2.set_ylabel('D Losses', color='red')
-    ax1.tick_params(axis="y", labelcolor='blue')
-    ax2.tick_params(axis="y", labelcolor='red')
-    fig.tight_layout()
-    plt.grid(True)
-    plt.savefig(f'{path_output}/training_loss.png', dpi=300)
-    plt.close()
+        # Plot training loss for both the generator and the discriminator after initial training
+        fig, ax1 = plt.subplots(figsize=(10, 5))
+        ax2 = ax1.twinx()
+        ax1.plot(g_losses, label='G Losses', color='blue')
+        ax2.plot(d_losses, label='D Losses', color='red')
+        fig.suptitle('Training Loss for Generator and Discriminator')
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('G Losses', color='blue')
+        ax2.set_ylabel('D Losses', color='red')
+        ax1.tick_params(axis="y", labelcolor='blue')
+        ax2.tick_params(axis="y", labelcolor='red')
+        fig.tight_layout()
+        plt.grid(True)
+        plt.savefig(f'{path_output}/training_loss.png', dpi=300)
+        plt.close()
 
 def evaluate():
     
     G.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'g_init.pth')))
     G.eval()
-    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(device)  # Convert to PyTorch tensor and move to device
-    batch_size = 4  # Adjust batch size according to your GPU memory
+    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(local_rank)  # Convert to PyTorch tensor and move to device
+    batch_size = 64  # Adjust batch size according to your GPU memory
     
     outputs = []
     with torch.no_grad():  # No gradient calculation for inference
@@ -361,8 +470,8 @@ def evaluate():
     G.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'g.pth')))
     G.eval()
     
-    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(device)  # Convert to PyTorch tensor and move to device
-    batch_size = 4  # Adjust batch size according to your GPU memory
+    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(local_rank)  # Convert to PyTorch tensor and move to device
+    batch_size = 64  # Adjust batch size according to your GPU memory
     
     outputs = []
     with torch.no_grad():  # No gradient calculation for inference
