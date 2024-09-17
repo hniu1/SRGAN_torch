@@ -14,7 +14,7 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_hr_60_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
@@ -32,16 +32,16 @@ print(f"Using device: {device}")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 8
-n_epoch_init = 50
+batch_size = 16
+n_epoch_init = 100
 n_epoch = 200
 # create folders to save result images and trained models
-version = 'v5.0' # check the version.txt file for historical versions under output directory
+version = 'v6.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
+initial_training = True
+readrawdata  = True
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -61,7 +61,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=True, scaler = 'minmax')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax')
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
@@ -97,9 +97,9 @@ class TrainData(Dataset):
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_hr_26(in_channels=2).to(device)
+    G = SRGAN_g_hr_60_64RB(in_channels=2).to(device)
 else:
-    G = SRGAN_g_hr_26(in_channels=1).to(device)
+    G = SRGAN_g_hr_60_64RB(in_channels=1).to(device)
 D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)

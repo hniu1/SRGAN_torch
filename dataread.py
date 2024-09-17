@@ -97,6 +97,9 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     if high_deg:
         deg_hr = 0.0416
         deg_lr = 0.25
+    elif high_deg == 2:
+        deg_hr = 0.0416
+        deg_lr = 1
 
     # lr_prect = read_Daymet("prcp", deg=1)
     # hr_prect = read_Daymet("prcp", deg=0.25)
