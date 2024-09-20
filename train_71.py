@@ -14,7 +14,7 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_hr_60_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_g_lr_26, SRGAN_g_hr_26, SRGAN_g_hr_60_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
@@ -32,18 +32,18 @@ print(f"Using device: {device}")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 8
+batch_size = 32
 n_epoch_init = 100
 n_epoch = 200
 # create folders to save result images and trained models
-version = 'v6.0' # check the version.txt file for historical versions under output directory
+version = 'v7.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
-w1_fn1=1e-4
-w2_fn2=1e3
+initial_training = True
+readrawdata  = True
+var = 'tmax'
+high_deg = 0 # 100 to 25km
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -63,7 +63,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=high_deg, scaler = 'minmax', var=var)
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
@@ -99,9 +99,9 @@ class TrainData(Dataset):
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_hr_60_64RB(in_channels=2).to(device)
+    G = SRGAN_g_lr_26(in_channels=2).to(device)
 else:
-    G = SRGAN_g_hr_60_64RB(in_channels=1).to(device)
+    G = SRGAN_g_lr_26(in_channels=1).to(device)
 D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
@@ -138,7 +138,7 @@ def train():
     # Define the loss functions for initial and adversarial training
     net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
     net_with_loss_D = WithLoss_D(D, G, criterion_gan)
-    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute, w1_fn1=w1_fn1, w2_fn2=w2_fn2)
+    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute)
 
     g_init_losses = []
     g_losses = []

@@ -27,11 +27,12 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
         if Daymet_ERA5:
             # fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
             # fil        = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
-            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
+            # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
+            fil        = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/createGrid_consv/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
         else:
             # fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # newgrid data in sunsphere
             # fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # old grid data in sunsphere
-            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
+            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_{var}_{year}_{deg}deg_US.nc')
 
         hr_var     = fil.variables[f'{var}'][:]
         arrays.append(np.array(hr_var))
@@ -90,12 +91,12 @@ def invtrans_write(y,scalar,name,path_output,elevation=False):
     #     elev_scale_inv   = scalar.inverse_transform(elev_scale.reshape(-1, 1))
     #     elev_scale_inv   = np.reshape(elev_scale_inv,(tt,nhr1,nhr2))
 
-def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False, scaler = 'standard'):
+def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False, scaler = 'standard', var = "prcp"):
 
 # Read variables nd generate low resolution version
     deg_hr = 0.25
     deg_lr = 1
-    if high_deg:
+    if high_deg == 1:
         deg_hr = 0.0416
         deg_lr = 0.25
     elif high_deg == 2:
@@ -105,11 +106,11 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     # lr_prect = read_Daymet("prcp", deg=1)
     # hr_prect = read_Daymet("prcp", deg=0.25)
     if not Daymet_ERA5:
-        lr_prect = read_Daymet_yearly("prcp", year_start=2018, year_end=2023,deg=deg_lr)
-        hr_prect = read_Daymet_yearly("prcp", year_start=2018, year_end=2023, deg=deg_hr)
+        lr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023,deg=deg_lr)
+        hr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023, deg=deg_hr)
     else:
-        lr_prect = read_Daymet_yearly("prcp", year_start=2018, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
-        hr_prect = read_Daymet_yearly("prcp", year_start=2018, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
+        lr_prect = read_Daymet_yearly(var, year_start=1990, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
+        hr_prect = read_Daymet_yearly(var, year_start=1990, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
     # time = np.reshape(time,(tt,nhr1,nhr2,1))
     print(f'hr shape: {np.shape(hr_prect)}')
     print(f'lr shape: {np.shape(lr_prect)}')

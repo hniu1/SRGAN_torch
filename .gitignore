@@ -24,3 +24,10 @@ slurm_output/slurm-output_50.txt
 run_50_multinodes.sh
 run_50.sh
 run_test_ddp.sh
+slurm_output/slurm_60-error.txt
+slurm_output/slurm_60-output.txt
+slurm_output/slurm_70-error.txt
+slurm_output/slurm_70-output.txt
+__pycache__/scalers.cpython-38.pyc
+slurm_output/slurm_80-error.txt
+slurm_output/slurm_80-output.txt

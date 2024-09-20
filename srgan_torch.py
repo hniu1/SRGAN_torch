@@ -648,7 +648,6 @@ class SRGAN_g_hr_60_64RB(nn.Module): # from 100km to 4km
             in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu5 = nn.PReLU()
-
         self.subpixel_conv3 = nn.PixelShuffle(upscale_factor=2)
         self.conv6 = nn.Conv2d(
             in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
@@ -690,14 +689,18 @@ class SRGAN_g_hr_60_64RB(nn.Module): # from 100km to 4km
         x = self.residual_block(x)
         x = self.conv2(x)
         x = x + temp
-        x = self.conv31(x)
-        x = self.subpixel_conv1(x)
         x = self.conv3(x)
+        x = self.subpixel_conv1(x)
+        x = self.conv4(x)
         x = self.smoothing_conv(x)
         x = self.subpixel_conv2(x)
-        x = self.prelu4(self.conv4(x))
-        x = self.conv5(x)
+        x = self.prelu5(self.conv5(x))
+        x = self.subpixel_conv3(x)
         x = self.conv6(x)
+        x = self.subpixel_conv4(x)
+        x = self.conv7(x)
+        x = self.prelu8(self.conv8(x))
+        x = self.conv9(x)
         return x
 
 

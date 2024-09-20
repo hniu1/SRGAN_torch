@@ -24,11 +24,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', type=str, default='train', help='train, eval')
 args = parser.parse_args()
 
-
-
 # Check if CUDA is available and set the device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    num_gpus = torch.cuda.device_count()
+    print(f"CUDA is available. Number of GPUs: {num_gpus}")
+else:
+    device = torch.device('cpu')
+    num_gpus = 0
+    print("CUDA is not available. Using CPU.")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
@@ -36,14 +40,15 @@ batch_size = 8
 n_epoch_init = 100
 n_epoch = 200
 # create folders to save result images and trained models
-version = 'v6.0' # check the version.txt file for historical versions under output directory
+version = 'v7.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
+initial_training = True
+readrawdata  = True
+var = 'tmax'
 w1_fn1=1e-4
-w2_fn2=1e3
+w2_fn2=1e4
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -63,7 +68,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax', var=var)
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
