@@ -33,17 +33,18 @@ print(f"Using device: {device}")
 
 ###====================== HYPER-PARAMETERS ===========================###
 batch_size = 8
-n_epoch_init = 100
-n_epoch = 200
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
 version = 'v6.0' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
+initial_training = True
+readrawdata  = True
+var = 'tmin'
 w1_fn1=1e-4
-w2_fn2=1e3
+w2_fn2=1e4
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'

@@ -1,0 +1,20 @@
+/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/nn/modules/loss.py:446: UserWarning: Using a target size (torch.Size([8, 1, 696, 1416])) that is different to the input size (torch.Size([8, 1, 174, 354])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+Traceback (most recent call last):
+  File "train_82.py", line 393, in <module>
+    train()
+  File "train_82.py", line 175, in train
+    loss = net_with_loss_init(lr_patch, hr_patch)
+  File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/lustre/orion/cli138/proj-shared/7hn/SRGAN_torch/loss_torch.py", line 15, in forward
+    loss1 = 1e4 * self.loss_fn1(out, hr)
+  File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/nn/modules/loss.py", line 446, in forward
+    return F.mse_loss(input, target, reduction=self.reduction)
+  File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/nn/functional.py", line 2659, in mse_loss
+    expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+  File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/functional.py", line 71, in broadcast_tensors
+    return _VF.broadcast_tensors(tensors)  # type: ignore
+RuntimeError: The size of tensor a (354) must match the size of tensor b (1416) at non-singleton dimension 3

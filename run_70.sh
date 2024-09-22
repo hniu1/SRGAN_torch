@@ -7,6 +7,8 @@
 #SBATCH --gpus-per-node 4
 #SBATCH --cpus-per-task 4
 #SBATCH -t 48:00:00
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=niuh@ornl.gov
 #SBATCH -o ./slurm_output/slurm_70-output.txt
 #SBATCH -e ./slurm_output/slurm_70-error.txt
 

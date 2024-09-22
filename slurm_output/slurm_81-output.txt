@@ -1,0 +1,122 @@
+no change     /ccs/home/haoranniu/miniconda3/condabin/conda
+no change     /ccs/home/haoranniu/miniconda3/bin/conda
+no change     /ccs/home/haoranniu/miniconda3/bin/conda-env
+no change     /ccs/home/haoranniu/miniconda3/bin/activate
+no change     /ccs/home/haoranniu/miniconda3/bin/deactivate
+no change     /ccs/home/haoranniu/miniconda3/etc/profile.d/conda.sh
+no change     /ccs/home/haoranniu/miniconda3/etc/fish/conf.d/conda.fish
+no change     /ccs/home/haoranniu/miniconda3/shell/condabin/Conda.psm1
+no change     /ccs/home/haoranniu/miniconda3/shell/condabin/conda-hook.ps1
+no change     /ccs/home/haoranniu/miniconda3/lib/python3.11/site-packages/xontrib/conda.xsh
+no change     /ccs/home/haoranniu/miniconda3/etc/profile.d/conda.csh
+no change     /ccs/home/haoranniu/.bashrc
+No action taken.
+Using device: cuda
+read 1 degree data from year 2000
+read 1 degree data from year 2001
+read 1 degree data from year 2002
+read 1 degree data from year 2003
+read 1 degree data from year 2004
+read 1 degree data from year 2005
+read 1 degree data from year 2006
+read 1 degree data from year 2007
+read 1 degree data from year 2008
+read 1 degree data from year 2009
+read 1 degree data from year 2010
+read 1 degree data from year 2011
+read 1 degree data from year 2012
+read 1 degree data from year 2013
+read 1 degree data from year 2014
+read 1 degree data from year 2015
+read 1 degree data from year 2016
+read 1 degree data from year 2017
+read 1 degree data from year 2018
+read 1 degree data from year 2019
+read 0.25 degree data from year 2000
+read 0.25 degree data from year 2001
+read 0.25 degree data from year 2002
+read 0.25 degree data from year 2003
+read 0.25 degree data from year 2004
+read 0.25 degree data from year 2005
+read 0.25 degree data from year 2006
+read 0.25 degree data from year 2007
+read 0.25 degree data from year 2008
+read 0.25 degree data from year 2009
+read 0.25 degree data from year 2010
+read 0.25 degree data from year 2011
+read 0.25 degree data from year 2012
+read 0.25 degree data from year 2013
+read 0.25 degree data from year 2014
+read 0.25 degree data from year 2015
+read 0.25 degree data from year 2016
+read 0.25 degree data from year 2017
+read 0.25 degree data from year 2018
+read 0.25 degree data from year 2019
+hr shape: (7305, 116, 236)
+lr shape: (7305, 29, 59)
+lr size (12498855,)
+no change     /ccs/home/haoranniu/miniconda3/condabin/conda
+no change     /ccs/home/haoranniu/miniconda3/bin/conda
+no change     /ccs/home/haoranniu/miniconda3/bin/conda-env
+no change     /ccs/home/haoranniu/miniconda3/bin/activate
+no change     /ccs/home/haoranniu/miniconda3/bin/deactivate
+no change     /ccs/home/haoranniu/miniconda3/etc/profile.d/conda.sh
+no change     /ccs/home/haoranniu/miniconda3/etc/fish/conf.d/conda.fish
+no change     /ccs/home/haoranniu/miniconda3/shell/condabin/Conda.psm1
+no change     /ccs/home/haoranniu/miniconda3/shell/condabin/conda-hook.ps1
+no change     /ccs/home/haoranniu/miniconda3/lib/python3.11/site-packages/xontrib/conda.xsh
+no change     /ccs/home/haoranniu/miniconda3/etc/profile.d/conda.csh
+no change     /ccs/home/haoranniu/.bashrc
+No action taken.
+Using device: cuda
+read 1 degree data from year 2000
+read 1 degree data from year 2001
+read 1 degree data from year 2002
+read 1 degree data from year 2003
+read 1 degree data from year 2004
+read 1 degree data from year 2005
+read 1 degree data from year 2006
+read 1 degree data from year 2007
+read 1 degree data from year 2008
+read 1 degree data from year 2009
+read 1 degree data from year 2010
+read 1 degree data from year 2011
+read 1 degree data from year 2012
+read 1 degree data from year 2013
+read 1 degree data from year 2014
+read 1 degree data from year 2015
+read 1 degree data from year 2016
+read 1 degree data from year 2017
+read 1 degree data from year 2018
+read 1 degree data from year 2019
+read 0.25 degree data from year 2000
+read 0.25 degree data from year 2001
+read 0.25 degree data from year 2002
+read 0.25 degree data from year 2003
+read 0.25 degree data from year 2004
+read 0.25 degree data from year 2005
+read 0.25 degree data from year 2006
+read 0.25 degree data from year 2007
+read 0.25 degree data from year 2008
+read 0.25 degree data from year 2009
+read 0.25 degree data from year 2010
+read 0.25 degree data from year 2011
+read 0.25 degree data from year 2012
+read 0.25 degree data from year 2013
+read 0.25 degree data from year 2014
+read 0.25 degree data from year 2015
+read 0.25 degree data from year 2016
+read 0.25 degree data from year 2017
+read 0.25 degree data from year 2018
+read 0.25 degree data from year 2019
+hr shape: (7305, 116, 236)
+lr shape: (7305, 29, 59)
+lr size (12498855,)
+Epoch [1/100], Avg G Loss: 71.22754474
+New best model saved with G Loss: 71.22754474
+Epoch [2/100], Avg G Loss: 6.19376440
+New best model saved with G Loss: 6.19376440
+Epoch [3/100], Avg G Loss: 4.58092249
+New best model saved with G Loss: 4.58092249
+Epoch [4/100], Avg G Loss: 3.84529557
+New best model saved with G Loss: 3.84529557

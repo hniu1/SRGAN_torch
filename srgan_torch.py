@@ -411,31 +411,31 @@ class SRGAN_g_lr_26(nn.Module):
     def __init__(self, in_channels):
         super(SRGAN_g_lr_26, self).__init__()
         self.conv1 = nn.Conv2d(
-            in_channels=in_channels, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=in_channels, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu1 = nn.PReLU()
         self.relu = nn.ReLU(inplace=True)
         self.residual_block = self.make_layer()
         self.conv2 = nn.Conv2d(
-            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu2 = nn.PReLU()
         self.subpixel_conv1 = nn.PixelShuffle(upscale_factor=2)
         self.conv3 = nn.Conv2d(
-            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         # Optionally add a smoothing convolution here
         self.smoothing_conv = nn.Conv2d(
-            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu3 = nn.PReLU()
         self.subpixel_conv2 = nn.PixelShuffle(upscale_factor=2)
         self.conv4 = nn.Conv2d(
-            in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu4 = nn.PReLU()
         self.conv5 = nn.Conv2d(
-            in_channels=64, out_channels=32, kernel_size=(3, 3), stride=(1, 1), padding='same', bias=False
+            in_channels=64, out_channels=32, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu5 = nn.PReLU()
         self.conv6 = nn.Conv2d(
@@ -491,11 +491,11 @@ class SRGAN_g_hr_26(nn.Module):
         self.prelu2 = nn.PReLU()
         self.subpixel_conv1 = nn.PixelShuffle(upscale_factor=2)
         self.conv3 = nn.Conv2d(
-            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=64, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         # Optionally add a smoothing convolution here
         self.smoothing_conv = nn.Conv2d(
-            in_channels=256, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=576, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu3 = nn.PReLU()
         self.subpixel_conv2 = nn.PixelShuffle(upscale_factor=3)
@@ -563,11 +563,11 @@ class SRGAN_g_hr_26_64RB(nn.Module):
         )
         self.subpixel_conv1 = nn.PixelShuffle(upscale_factor=2)
         self.conv3 = nn.Conv2d(
-            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=64, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         # Optionally add a smoothing convolution here
         self.smoothing_conv = nn.Conv2d(
-            in_channels=256, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=576, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu3 = nn.PReLU()
         self.subpixel_conv2 = nn.PixelShuffle(upscale_factor=3)
@@ -636,21 +636,27 @@ class SRGAN_g_hr_60_64RB(nn.Module): # from 100km to 4km
         )
         self.subpixel_conv1 = nn.PixelShuffle(upscale_factor=2)
         self.conv4 = nn.Conv2d(
-            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=64, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         # Optionally add a smoothing convolution here
-        self.smoothing_conv = nn.Conv2d(
-            in_channels=256, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+        self.smoothing_conv1 = nn.Conv2d(
+            in_channels=576, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu4 = nn.PReLU()
         self.subpixel_conv2 = nn.PixelShuffle(upscale_factor=3)
         self.conv5 = nn.Conv2d(
             in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
+        self.smoothing_conv2 = nn.Conv2d(
+            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+        )
         self.prelu5 = nn.PReLU()
         self.subpixel_conv3 = nn.PixelShuffle(upscale_factor=2)
         self.conv6 = nn.Conv2d(
             in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+        )
+        self.smoothing_conv3 = nn.Conv2d(
+            in_channels=256, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.subpixel_conv4 = nn.PixelShuffle(upscale_factor=2)
         self.conv7 = nn.Conv2d(
@@ -692,11 +698,13 @@ class SRGAN_g_hr_60_64RB(nn.Module): # from 100km to 4km
         x = self.conv3(x)
         x = self.subpixel_conv1(x)
         x = self.conv4(x)
-        x = self.smoothing_conv(x)
+        x = self.smoothing_conv1(x)
         x = self.subpixel_conv2(x)
         x = self.prelu5(self.conv5(x))
+        x = self.smoothing_conv2(x)
         x = self.subpixel_conv3(x)
         x = self.conv6(x)
+        x = self.smoothing_conv3(x)
         x = self.subpixel_conv4(x)
         x = self.conv7(x)
         x = self.prelu8(self.conv8(x))

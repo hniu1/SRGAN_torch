@@ -109,8 +109,8 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
         lr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023,deg=deg_lr)
         hr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023, deg=deg_hr)
     else:
-        lr_prect = read_Daymet_yearly(var, year_start=1990, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
-        hr_prect = read_Daymet_yearly(var, year_start=1990, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
+        lr_prect = read_Daymet_yearly(var, year_start=2000, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
+        hr_prect = read_Daymet_yearly(var, year_start=2000, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
     # time = np.reshape(time,(tt,nhr1,nhr2,1))
     print(f'hr shape: {np.shape(hr_prect)}')
     print(f'lr shape: {np.shape(lr_prect)}')
