@@ -44,3 +44,5 @@ lr shape: (7305, 116, 236)
 lr size (199981680,)
 Epoch [1/50], Avg G Loss: 0.08163996
 New best model saved with G Loss: 0.08163996
+Epoch [2/50], Avg G Loss: 0.02891521
+New best model saved with G Loss: 0.02891521
