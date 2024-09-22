@@ -563,11 +563,11 @@ class SRGAN_g_hr_26_64RB(nn.Module):
         )
         self.subpixel_conv1 = nn.PixelShuffle(upscale_factor=2)
         self.conv3 = nn.Conv2d(
-            in_channels=64, out_channels=256, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=64, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         # Optionally add a smoothing convolution here
         self.smoothing_conv = nn.Conv2d(
-            in_channels=256, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
+            in_channels=576, out_channels=576, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
         self.prelu3 = nn.PReLU()
         self.subpixel_conv2 = nn.PixelShuffle(upscale_factor=3)

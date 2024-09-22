@@ -14,3 +14,4 @@ __pycache__/srgan_torch.cpython-38.pyc
 slurm-error.txt
 slurm-output.txt
 dataread.py
+dataread.py

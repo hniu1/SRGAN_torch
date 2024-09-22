@@ -32,9 +32,9 @@ print(f"Using device: {device}")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 16
-n_epoch_init = 100
-n_epoch = 200
+batch_size = 8
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
 version = 'v5.1' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
@@ -42,6 +42,7 @@ elevation = True
 elevation_hr = False
 initial_training = True
 readrawdata  = True
+w1_fn1, w2_fn2 = 1e-4, 1e4
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -61,7 +62,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=True, scaler = 'minmax')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=1, scaler = 'minmax')
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
@@ -136,7 +137,7 @@ def train():
     # Define the loss functions for initial and adversarial training
     net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
     net_with_loss_D = WithLoss_D(D, G, criterion_gan)
-    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute)
+    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute, w1_fn1=w1_fn1, w2_fn2=w2_fn2)
 
     g_init_losses = []
     g_losses = []

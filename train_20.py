@@ -36,7 +36,7 @@ batch_size = 128
 n_epoch_init = 50
 n_epoch = 400
 # create folders to save result images and trained models
-version = 'v2.8' # check the version.txt file for historical versions under output directory
+version = 'v2.6' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False

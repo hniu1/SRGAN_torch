@@ -18,22 +18,24 @@ class WithLoss_init(nn.Module):
     
 
 class WithLoss_G(nn.Module):
-    def __init__(self, D_net, G_net, loss_fn1, loss_fn2, loss_fn3):
+    def __init__(self, D_net, G_net, loss_fn1, loss_fn2, loss_fn3, w1_fn1=1e-4, w2_fn2=1e4):
         super(WithLoss_G, self).__init__()
         self.D_net = D_net
         self.G_net = G_net
         self.loss_fn1 = loss_fn1
         self.loss_fn2 = loss_fn2
         self.loss_fn3 = loss_fn3
+        self.w1_fn1 = w1_fn1
+        self.w2_fn2 = w2_fn2
 
     def forward(self, lr, hr):
         fake_patches = self.G_net(lr)
         logits_fake = self.D_net(fake_patches)
 
-        g_gan_loss = 1e-2 * self.loss_fn1(logits_fake, torch.ones_like(logits_fake)) # one means real image, default 1e-4
+        g_gan_loss = self.w1_fn1 * self.loss_fn1(logits_fake, torch.ones_like(logits_fake)) # one means real image, default 1e-4
         g_gan_loss = torch.mean(g_gan_loss)
         
-        mse_loss = 1e6 * self.loss_fn2(fake_patches, hr) # 1e4
+        mse_loss = self.w2_fn2 * self.loss_fn2(fake_patches, hr) # 1e4
         g_loss = mse_loss + g_gan_loss
         return g_loss
     
