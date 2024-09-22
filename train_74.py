@@ -1,6 +1,6 @@
 import os
-# Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# # Set CUDA device
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import time
 import numpy as np
@@ -14,7 +14,7 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_g_lr_26, SRGAN_g_hr_26, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_g_lr_26, SRGAN_g_hr_26, SRGAN_g_hr_26_64RB, SRGAN_g_hhr_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
@@ -27,23 +27,29 @@ args = parser.parse_args()
 
 
 # Check if CUDA is available and set the device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    num_gpus = torch.cuda.device_count()
+    print(f"CUDA is available. Number of GPUs: {num_gpus}")
+else:
+    device = torch.device('cpu')
+    num_gpus = 0
+    print("CUDA is not available. Using CPU.")
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 32
-n_epoch_init = 100
-n_epoch = 200
+batch_size = 4
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
-version = 'v7.1' # check the version.txt file for historical versions under output directory
+version = 'v7.4' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
 initial_training = False
 readrawdata  = False
 var = 'tmax'
-high_deg = 0 # 100 to 25km
+high_deg = 1 # 25 to 4km
 w1_fn1=1e-4
 w2_fn2=1e4
 
@@ -101,10 +107,10 @@ class TrainData(Dataset):
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_lr_26(in_channels=2).to(device)
+    G = SRGAN_g_hr_26_64RB(in_channels=2).to(device)
 else:
-    G = SRGAN_g_lr_26(in_channels=1).to(device)
-D = SRGAN_d_lr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
+    G = SRGAN_g_hr_26_64RB(in_channels=1).to(device)
+D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
 
@@ -230,7 +236,7 @@ def train():
             hr_patch = hr_patch.to(device)
             if epoch > 0:
                 # Train Generator
-                if d_loss < 0.7 or loss_g > 0.1:
+                if d_loss < 1.0:
                     g_optimizer.zero_grad()
                     loss_g = net_with_loss_G(lr_patch, hr_patch)
                     loss_g.backward()
@@ -239,7 +245,7 @@ def train():
                     with torch.no_grad(): # monitor g loss without train
                         loss_g = net_with_loss_G(lr_patch, hr_patch)
                 # Train Discriminator
-                if d_loss > 0.5:
+                if d_loss > 0.3:
                     d_optimizer.zero_grad()
                     loss_d = net_with_loss_D(lr_patch, hr_patch)
                     loss_d.backward()

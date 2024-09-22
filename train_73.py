@@ -1,6 +1,6 @@
 import os
 # Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import time
 import numpy as np
@@ -33,15 +33,15 @@ print(f"Using device: {device}")
 
 ###====================== HYPER-PARAMETERS ===========================###
 batch_size = 32
-n_epoch_init = 100
-n_epoch = 200
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
-version = 'v7.1' # check the version.txt file for historical versions under output directory
+version = 'v7.3' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
+initial_training = True
+readrawdata  = True
 var = 'tmax'
 high_deg = 0 # 100 to 25km
 w1_fn1=1e-4

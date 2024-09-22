@@ -1,0 +1,202 @@
+Using device: cuda
+Pre-trained SRGAN loaded!
+Epoch: [1/100], Avg G Loss: 0.27001981, Avg D Loss: 0.09653988
+New best G model saved with G Loss: 0.27001981
+Epoch: [2/100], Avg G Loss: 0.21130174, Avg D Loss: 0.01090553
+New best G model saved with G Loss: 0.21130174
+Epoch: [3/100], Avg G Loss: 0.20338081, Avg D Loss: 1.69189889
+New best G model saved with G Loss: 0.20338081
+Epoch: [4/100], Avg G Loss: 0.22042748, Avg D Loss: 0.20655024
+No improvement for 1 epochs in adversarial phase.
+Epoch: [5/100], Avg G Loss: 0.21170499, Avg D Loss: 0.00323854
+No improvement for 2 epochs in adversarial phase.
+Epoch: [6/100], Avg G Loss: 0.20628120, Avg D Loss: 0.18747144
+No improvement for 3 epochs in adversarial phase.
+Epoch: [7/100], Avg G Loss: 0.20933862, Avg D Loss: 0.04335602
+No improvement for 4 epochs in adversarial phase.
+Epoch: [8/100], Avg G Loss: 0.20575474, Avg D Loss: 0.76749374
+No improvement for 5 epochs in adversarial phase.
+Epoch: [9/100], Avg G Loss: 0.20920644, Avg D Loss: 0.19054288
+No improvement for 6 epochs in adversarial phase.
+Epoch: [10/100], Avg G Loss: 0.21233665, Avg D Loss: 0.25603366
+No improvement for 7 epochs in adversarial phase.
+Epoch: [11/100], Avg G Loss: 0.20940034, Avg D Loss: 0.14635710
+No improvement for 8 epochs in adversarial phase.
+Epoch: [12/100], Avg G Loss: 0.20729856, Avg D Loss: 0.18482947
+No improvement for 9 epochs in adversarial phase.
+Epoch: [13/100], Avg G Loss: 0.20859620, Avg D Loss: 0.20814440
+No improvement for 10 epochs in adversarial phase.
+Epoch: [14/100], Avg G Loss: 0.21182355, Avg D Loss: 0.10020824
+No improvement for 11 epochs in adversarial phase.
+Epoch: [15/100], Avg G Loss: 0.21445632, Avg D Loss: 0.18383361
+No improvement for 12 epochs in adversarial phase.
+Epoch: [16/100], Avg G Loss: 0.20769381, Avg D Loss: 0.31883471
+No improvement for 13 epochs in adversarial phase.
+Epoch: [17/100], Avg G Loss: 0.21087516, Avg D Loss: 0.11488365
+No improvement for 14 epochs in adversarial phase.
+Epoch: [18/100], Avg G Loss: 0.21404640, Avg D Loss: 0.23910134
+No improvement for 15 epochs in adversarial phase.
+Epoch: [19/100], Avg G Loss: 0.20312004, Avg D Loss: 0.30105120
+New best G model saved with G Loss: 0.20312004
+Epoch: [20/100], Avg G Loss: 0.21260268, Avg D Loss: 0.17816742
+No improvement for 1 epochs in adversarial phase.
+Epoch: [21/100], Avg G Loss: 0.21397156, Avg D Loss: 0.12078014
+No improvement for 2 epochs in adversarial phase.
+Epoch: [22/100], Avg G Loss: 0.20880232, Avg D Loss: 0.11650795
+No improvement for 3 epochs in adversarial phase.
+Epoch: [23/100], Avg G Loss: 0.20407988, Avg D Loss: 0.18228816
+No improvement for 4 epochs in adversarial phase.
+Epoch: [24/100], Avg G Loss: 0.20277330, Avg D Loss: 0.29985729
+New best G model saved with G Loss: 0.20277330
+Epoch: [25/100], Avg G Loss: 0.20148921, Avg D Loss: 0.24600850
+New best G model saved with G Loss: 0.20148921
+Epoch: [26/100], Avg G Loss: 0.20405959, Avg D Loss: 0.24126278
+No improvement for 1 epochs in adversarial phase.
+Epoch: [27/100], Avg G Loss: 0.20495006, Avg D Loss: 0.40650113
+No improvement for 2 epochs in adversarial phase.
+Epoch: [28/100], Avg G Loss: 0.20462973, Avg D Loss: 0.30571169
+No improvement for 3 epochs in adversarial phase.
+Epoch: [29/100], Avg G Loss: 0.21571337, Avg D Loss: 0.21867684
+No improvement for 4 epochs in adversarial phase.
+Epoch: [30/100], Avg G Loss: 0.20110449, Avg D Loss: 0.41832913
+New best G model saved with G Loss: 0.20110449
+Epoch: [31/100], Avg G Loss: 0.20315084, Avg D Loss: 0.28721420
+No improvement for 1 epochs in adversarial phase.
+Epoch: [32/100], Avg G Loss: 0.20168777, Avg D Loss: 0.38209249
+No improvement for 2 epochs in adversarial phase.
+Epoch: [33/100], Avg G Loss: 0.20787489, Avg D Loss: 0.19221954
+No improvement for 3 epochs in adversarial phase.
+Epoch: [34/100], Avg G Loss: 0.20413866, Avg D Loss: 0.39085684
+No improvement for 4 epochs in adversarial phase.
+Epoch: [35/100], Avg G Loss: 0.20540143, Avg D Loss: 0.53836740
+No improvement for 5 epochs in adversarial phase.
+Epoch: [36/100], Avg G Loss: 0.20264160, Avg D Loss: 0.46046777
+No improvement for 6 epochs in adversarial phase.
+Epoch: [37/100], Avg G Loss: 0.19798078, Avg D Loss: 0.37233799
+New best G model saved with G Loss: 0.19798078
+Epoch: [38/100], Avg G Loss: 0.21999907, Avg D Loss: 0.31515695
+No improvement for 1 epochs in adversarial phase.
+Epoch: [39/100], Avg G Loss: 0.19724439, Avg D Loss: 0.36719235
+New best G model saved with G Loss: 0.19724439
+Epoch: [40/100], Avg G Loss: 0.19629155, Avg D Loss: 0.54107390
+New best G model saved with G Loss: 0.19629155
+Epoch: [41/100], Avg G Loss: 0.19641026, Avg D Loss: 0.52300093
+No improvement for 1 epochs in adversarial phase.
+Epoch: [42/100], Avg G Loss: 0.19391829, Avg D Loss: 0.27806507
+New best G model saved with G Loss: 0.19391829
+Epoch: [43/100], Avg G Loss: 0.19984337, Avg D Loss: 0.60486398
+No improvement for 1 epochs in adversarial phase.
+Epoch: [44/100], Avg G Loss: 0.19842154, Avg D Loss: 0.60687975
+No improvement for 2 epochs in adversarial phase.
+Epoch: [45/100], Avg G Loss: 0.20024875, Avg D Loss: 0.33346014
+No improvement for 3 epochs in adversarial phase.
+Epoch: [46/100], Avg G Loss: 0.20838189, Avg D Loss: 0.42283724
+No improvement for 4 epochs in adversarial phase.
+Epoch: [47/100], Avg G Loss: 0.20456865, Avg D Loss: 0.21436192
+No improvement for 5 epochs in adversarial phase.
+Epoch: [48/100], Avg G Loss: 0.19881781, Avg D Loss: 0.36812595
+No improvement for 6 epochs in adversarial phase.
+Epoch: [49/100], Avg G Loss: 0.21338026, Avg D Loss: 0.23056233
+No improvement for 7 epochs in adversarial phase.
+Epoch: [50/100], Avg G Loss: 0.19614349, Avg D Loss: 0.16677840
+No improvement for 8 epochs in adversarial phase.
+Epoch: [51/100], Avg G Loss: 0.18840532, Avg D Loss: 0.26342077
+New best G model saved with G Loss: 0.18840532
+Epoch: [52/100], Avg G Loss: 0.18830264, Avg D Loss: 0.35832354
+New best G model saved with G Loss: 0.18830264
+Epoch: [53/100], Avg G Loss: 0.18601428, Avg D Loss: 0.09970925
+New best G model saved with G Loss: 0.18601428
+Epoch: [54/100], Avg G Loss: 0.17529452, Avg D Loss: 5.60676983
+New best G model saved with G Loss: 0.17529452
+Epoch: [55/100], Avg G Loss: 0.18438069, Avg D Loss: 1.07936565
+No improvement for 1 epochs in adversarial phase.
+Epoch: [56/100], Avg G Loss: 0.18440532, Avg D Loss: 0.00018871
+No improvement for 2 epochs in adversarial phase.
+Epoch: [57/100], Avg G Loss: 0.17145767, Avg D Loss: 19.12330290
+New best G model saved with G Loss: 0.17145767
+Epoch: [58/100], Avg G Loss: 0.18315418, Avg D Loss: 0.91828816
+No improvement for 1 epochs in adversarial phase.
+Epoch: [59/100], Avg G Loss: 0.17702408, Avg D Loss: 0.23989495
+No improvement for 2 epochs in adversarial phase.
+Epoch: [60/100], Avg G Loss: 0.17974508, Avg D Loss: 0.34734555
+No improvement for 3 epochs in adversarial phase.
+Epoch: [61/100], Avg G Loss: 0.18152236, Avg D Loss: 0.23452664
+No improvement for 4 epochs in adversarial phase.
+Epoch: [62/100], Avg G Loss: 0.18017375, Avg D Loss: 0.17789557
+No improvement for 5 epochs in adversarial phase.
+Epoch: [63/100], Avg G Loss: 0.18160891, Avg D Loss: 0.17699462
+No improvement for 6 epochs in adversarial phase.
+Epoch: [64/100], Avg G Loss: 0.18285754, Avg D Loss: 0.41505785
+No improvement for 7 epochs in adversarial phase.
+Epoch: [65/100], Avg G Loss: 0.18534581, Avg D Loss: 0.32211890
+No improvement for 8 epochs in adversarial phase.
+Epoch: [66/100], Avg G Loss: 0.18289586, Avg D Loss: 0.27330613
+No improvement for 9 epochs in adversarial phase.
+Epoch: [67/100], Avg G Loss: 0.18472769, Avg D Loss: 0.62587227
+No improvement for 10 epochs in adversarial phase.
+Epoch: [68/100], Avg G Loss: 0.18377298, Avg D Loss: 0.17509308
+No improvement for 11 epochs in adversarial phase.
+Epoch: [69/100], Avg G Loss: 0.18079504, Avg D Loss: 0.23667392
+No improvement for 12 epochs in adversarial phase.
+Epoch: [70/100], Avg G Loss: 0.18251961, Avg D Loss: 0.89071209
+No improvement for 13 epochs in adversarial phase.
+Epoch: [71/100], Avg G Loss: 0.17942896, Avg D Loss: 0.05035178
+No improvement for 14 epochs in adversarial phase.
+Epoch: [72/100], Avg G Loss: 0.17537800, Avg D Loss: 2.08597647
+No improvement for 15 epochs in adversarial phase.
+Epoch: [73/100], Avg G Loss: 0.17742688, Avg D Loss: 0.57238575
+No improvement for 16 epochs in adversarial phase.
+Epoch: [74/100], Avg G Loss: 0.17516452, Avg D Loss: 0.06500217
+No improvement for 17 epochs in adversarial phase.
+Epoch: [75/100], Avg G Loss: 0.17637678, Avg D Loss: 0.32829673
+No improvement for 18 epochs in adversarial phase.
+Epoch: [76/100], Avg G Loss: 0.17531572, Avg D Loss: 0.84117751
+No improvement for 19 epochs in adversarial phase.
+Epoch: [77/100], Avg G Loss: 0.18209509, Avg D Loss: 0.20387189
+No improvement for 20 epochs in adversarial phase.
+Epoch: [78/100], Avg G Loss: 0.17961098, Avg D Loss: 0.22048645
+No improvement for 21 epochs in adversarial phase.
+Epoch: [79/100], Avg G Loss: 0.17465775, Avg D Loss: 0.28481576
+No improvement for 22 epochs in adversarial phase.
+Epoch: [80/100], Avg G Loss: 0.17618094, Avg D Loss: 0.20575261
+No improvement for 23 epochs in adversarial phase.
+Epoch: [81/100], Avg G Loss: 0.17594596, Avg D Loss: 0.94322379
+No improvement for 24 epochs in adversarial phase.
+Epoch: [82/100], Avg G Loss: 0.17274094, Avg D Loss: 0.30427008
+No improvement for 25 epochs in adversarial phase.
+Epoch: [83/100], Avg G Loss: 0.17677322, Avg D Loss: 0.39243523
+No improvement for 26 epochs in adversarial phase.
+Epoch: [84/100], Avg G Loss: 0.17712752, Avg D Loss: 0.03812948
+No improvement for 27 epochs in adversarial phase.
+Epoch: [85/100], Avg G Loss: 0.16872947, Avg D Loss: 0.17390572
+New best G model saved with G Loss: 0.16872947
+Epoch: [86/100], Avg G Loss: 0.17702508, Avg D Loss: 0.61251077
+No improvement for 1 epochs in adversarial phase.
+Epoch: [87/100], Avg G Loss: 0.18004688, Avg D Loss: 0.49004365
+No improvement for 2 epochs in adversarial phase.
+Epoch: [88/100], Avg G Loss: 0.17777323, Avg D Loss: 0.26968031
+No improvement for 3 epochs in adversarial phase.
+Epoch: [89/100], Avg G Loss: 0.17971020, Avg D Loss: 0.16310445
+No improvement for 4 epochs in adversarial phase.
+Epoch: [90/100], Avg G Loss: 0.17503504, Avg D Loss: 0.11294150
+No improvement for 5 epochs in adversarial phase.
+Epoch: [91/100], Avg G Loss: 0.18809187, Avg D Loss: 0.17247489
+No improvement for 6 epochs in adversarial phase.
+Epoch: [92/100], Avg G Loss: 0.17536965, Avg D Loss: 0.13283740
+No improvement for 7 epochs in adversarial phase.
+Epoch: [93/100], Avg G Loss: 0.17034064, Avg D Loss: 0.15887782
+No improvement for 8 epochs in adversarial phase.
+Epoch: [94/100], Avg G Loss: 0.17317375, Avg D Loss: 0.49385230
+No improvement for 9 epochs in adversarial phase.
+Epoch: [95/100], Avg G Loss: 0.17055155, Avg D Loss: 0.17618147
+No improvement for 10 epochs in adversarial phase.
+Epoch: [96/100], Avg G Loss: 0.16890309, Avg D Loss: 0.07356719
+No improvement for 11 epochs in adversarial phase.
+Epoch: [97/100], Avg G Loss: 0.16810340, Avg D Loss: 0.25289493
+New best G model saved with G Loss: 0.16810340
+Epoch: [98/100], Avg G Loss: 0.17119154, Avg D Loss: 0.55543229
+No improvement for 1 epochs in adversarial phase.
+Epoch: [99/100], Avg G Loss: 0.17204940, Avg D Loss: 0.49370229
+No improvement for 2 epochs in adversarial phase.
+Epoch: [100/100], Avg G Loss: 0.16704309, Avg D Loss: 0.24135401
+New best G model saved with G Loss: 0.16704309

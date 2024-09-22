@@ -1,0 +1,38 @@
+Using device: cuda
+Pre-trained SRGAN loaded!
+Epoch: [1/100], Avg G Loss: 0.13058366, Avg D Loss: 0.14538442
+New best G model saved with G Loss: 0.13058366
+Epoch: [2/100], Avg G Loss: 0.12685853, Avg D Loss: 5.75168479
+New best G model saved with G Loss: 0.12685853
+Epoch: [3/100], Avg G Loss: 0.11239475, Avg D Loss: 0.18005621
+New best G model saved with G Loss: 0.11239475
+Epoch: [4/100], Avg G Loss: 0.19171043, Avg D Loss: 2.79808069
+No improvement for 1 epochs in adversarial phase.
+Epoch: [5/100], Avg G Loss: 0.12454366, Avg D Loss: 0.06581982
+No improvement for 2 epochs in adversarial phase.
+Epoch: [6/100], Avg G Loss: 0.12056284, Avg D Loss: 5.68276485
+No improvement for 3 epochs in adversarial phase.
+Epoch: [7/100], Avg G Loss: 0.10776425, Avg D Loss: 0.22368512
+New best G model saved with G Loss: 0.10776425
+Epoch: [8/100], Avg G Loss: 0.09598613, Avg D Loss: 4.06450156
+New best G model saved with G Loss: 0.09598613
+Epoch: [9/100], Avg G Loss: 0.14775438, Avg D Loss: 0.11322980
+No improvement for 1 epochs in adversarial phase.
+Epoch: [10/100], Avg G Loss: 0.09475305, Avg D Loss: 1.79026149
+New best G model saved with G Loss: 0.09475305
+Epoch: [11/100], Avg G Loss: 0.09344154, Avg D Loss: 0.08882372
+New best G model saved with G Loss: 0.09344154
+Epoch: [12/100], Avg G Loss: 0.09266673, Avg D Loss: 3.31826058
+New best G model saved with G Loss: 0.09266673
+Epoch: [13/100], Avg G Loss: 0.09412819, Avg D Loss: 0.10659754
+No improvement for 1 epochs in adversarial phase.
+Epoch: [14/100], Avg G Loss: 0.08477434, Avg D Loss: 2.61846568
+New best G model saved with G Loss: 0.08477434
+Epoch: [15/100], Avg G Loss: 0.08884627, Avg D Loss: 0.08868266
+No improvement for 1 epochs in adversarial phase.
+Epoch: [16/100], Avg G Loss: 0.08112994, Avg D Loss: 1.79380830
+New best G model saved with G Loss: 0.08112994
+Epoch: [17/100], Avg G Loss: 0.09958886, Avg D Loss: 0.06541862
+No improvement for 1 epochs in adversarial phase.
+Epoch: [18/100], Avg G Loss: 0.09353224, Avg D Loss: 2.14832085
+No improvement for 2 epochs in adversarial phase.

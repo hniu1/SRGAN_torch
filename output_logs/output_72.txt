@@ -1,0 +1,137 @@
+CUDA is available. Number of GPUs: 1
+read 0.25 degree data from year 1990
+read 0.25 degree data from year 1991
+read 0.25 degree data from year 1992
+read 0.25 degree data from year 1993
+read 0.25 degree data from year 1994
+read 0.25 degree data from year 1995
+read 0.25 degree data from year 1996
+read 0.25 degree data from year 1997
+read 0.25 degree data from year 1998
+read 0.25 degree data from year 1999
+read 0.25 degree data from year 2000
+read 0.25 degree data from year 2001
+read 0.25 degree data from year 2002
+read 0.25 degree data from year 2003
+read 0.25 degree data from year 2004
+read 0.25 degree data from year 2005
+read 0.25 degree data from year 2006
+read 0.25 degree data from year 2007
+read 0.25 degree data from year 2008
+read 0.25 degree data from year 2009
+read 0.25 degree data from year 2010
+read 0.25 degree data from year 2011
+read 0.25 degree data from year 2012
+read 0.25 degree data from year 2013
+read 0.25 degree data from year 2014
+read 0.25 degree data from year 2015
+read 0.25 degree data from year 2016
+read 0.25 degree data from year 2017
+read 0.25 degree data from year 2018
+read 0.25 degree data from year 2019
+read 0.0416 degree data from year 1990
+read 0.0416 degree data from year 1991
+read 0.0416 degree data from year 1992
+read 0.0416 degree data from year 1993
+read 0.0416 degree data from year 1994
+read 0.0416 degree data from year 1995
+read 0.0416 degree data from year 1996
+read 0.0416 degree data from year 1997
+read 0.0416 degree data from year 1998
+read 0.0416 degree data from year 1999
+read 0.0416 degree data from year 2000
+read 0.0416 degree data from year 2001
+read 0.0416 degree data from year 2002
+read 0.0416 degree data from year 2003
+read 0.0416 degree data from year 2004
+read 0.0416 degree data from year 2005
+read 0.0416 degree data from year 2006
+read 0.0416 degree data from year 2007
+read 0.0416 degree data from year 2008
+read 0.0416 degree data from year 2009
+read 0.0416 degree data from year 2010
+read 0.0416 degree data from year 2011
+read 0.0416 degree data from year 2012
+read 0.0416 degree data from year 2013
+read 0.0416 degree data from year 2014
+read 0.0416 degree data from year 2015
+read 0.0416 degree data from year 2016
+read 0.0416 degree data from year 2017
+read 0.0416 degree data from year 2018
+read 0.0416 degree data from year 2019
+hr shape: (10957, 696, 1416)
+lr shape: (10957, 116, 236)
+lr size (299958832,)
+Epoch [1/50], Avg G Loss: 24.02100464
+New best model saved with G Loss: 24.02100464
+Epoch [2/50], Avg G Loss: 1.38009705
+New best model saved with G Loss: 1.38009705
+Epoch [3/50], Avg G Loss: 1.29194690
+New best model saved with G Loss: 1.29194690
+Epoch [4/50], Avg G Loss: 1.19943128
+New best model saved with G Loss: 1.19943128
+Epoch [5/50], Avg G Loss: 1.09606967
+New best model saved with G Loss: 1.09606967
+Epoch [6/50], Avg G Loss: 0.99104937
+New best model saved with G Loss: 0.99104937
+Epoch [7/50], Avg G Loss: 0.73319430
+New best model saved with G Loss: 0.73319430
+Epoch [8/50], Avg G Loss: 0.61796605
+New best model saved with G Loss: 0.61796605
+Epoch [9/50], Avg G Loss: 1.18162685
+No improvement for 1 epochs during initialization.
+Epoch [10/50], Avg G Loss: 1.20799246
+No improvement for 2 epochs during initialization.
+Epoch [11/50], Avg G Loss: 0.80175238
+No improvement for 3 epochs during initialization.
+Epoch [12/50], Avg G Loss: 0.57621204
+New best model saved with G Loss: 0.57621204
+Epoch [13/50], Avg G Loss: 0.59073497
+No improvement for 1 epochs during initialization.
+Epoch [14/50], Avg G Loss: 0.43729572
+New best model saved with G Loss: 0.43729572
+Epoch [15/50], Avg G Loss: 0.34714426
+New best model saved with G Loss: 0.34714426
+Epoch [16/50], Avg G Loss: 3.35690840
+No improvement for 1 epochs during initialization.
+Epoch [17/50], Avg G Loss: 1.12832977
+No improvement for 2 epochs during initialization.
+Epoch [18/50], Avg G Loss: 0.88730268
+No improvement for 3 epochs during initialization.
+Epoch [19/50], Avg G Loss: 0.54355334
+No improvement for 4 epochs during initialization.
+Epoch [20/50], Avg G Loss: 0.44598114
+No improvement for 5 epochs during initialization.
+Early stopping triggered during initial training.
+Traceback (most recent call last):
+  File "/mnt/data/home/7hn/project/SRGAN_torch/train_72.py", line 399, in <module>
+    train()
+  File "/mnt/data/home/7hn/project/SRGAN_torch/train_72.py", line 263, in train
+    loss_d = net_with_loss_D(lr_patch, hr_patch)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/project/SRGAN_torch/loss_torch.py", line 52, in forward
+    logits_real = self.D_net(hr)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/parallel/data_parallel.py", line 183, in forward
+    return self.module(*inputs[0], **module_kwargs[0])
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/project/SRGAN_torch/srgan_torch.py", line 1307, in forward
+    x = self.prelu2(self.bn1(x))
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/batchnorm.py", line 175, in forward
+    return F.batch_norm(
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/functional.py", line 2509, in batch_norm
+    return torch.batch_norm(
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.88 GiB. GPU 

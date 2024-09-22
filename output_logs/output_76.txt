@@ -1,0 +1,199 @@
+nohup: ignoring input
+CUDA is available. Number of GPUs: 2
+read 0.25 degree data from year 1980
+read 0.25 degree data from year 1981
+read 0.25 degree data from year 1982
+read 0.25 degree data from year 1983
+read 0.25 degree data from year 1984
+read 0.25 degree data from year 1985
+read 0.25 degree data from year 1986
+read 0.25 degree data from year 1987
+read 0.25 degree data from year 1988
+read 0.25 degree data from year 1989
+read 0.25 degree data from year 1990
+read 0.25 degree data from year 1991
+read 0.25 degree data from year 1992
+read 0.25 degree data from year 1993
+read 0.25 degree data from year 1994
+read 0.25 degree data from year 1995
+read 0.25 degree data from year 1996
+read 0.25 degree data from year 1997
+read 0.25 degree data from year 1998
+read 0.25 degree data from year 1999
+read 0.25 degree data from year 2000
+read 0.25 degree data from year 2001
+read 0.25 degree data from year 2002
+read 0.25 degree data from year 2003
+read 0.25 degree data from year 2004
+read 0.25 degree data from year 2005
+read 0.25 degree data from year 2006
+read 0.25 degree data from year 2007
+read 0.25 degree data from year 2008
+read 0.25 degree data from year 2009
+read 0.25 degree data from year 2010
+read 0.25 degree data from year 2011
+read 0.25 degree data from year 2012
+read 0.25 degree data from year 2013
+read 0.25 degree data from year 2014
+read 0.25 degree data from year 2015
+read 0.25 degree data from year 2016
+read 0.25 degree data from year 2017
+read 0.25 degree data from year 2018
+read 0.25 degree data from year 2019
+read 0.0416 degree data from year 1980
+read 0.0416 degree data from year 1981
+read 0.0416 degree data from year 1982
+read 0.0416 degree data from year 1983
+read 0.0416 degree data from year 1984
+read 0.0416 degree data from year 1985
+read 0.0416 degree data from year 1986
+read 0.0416 degree data from year 1987
+read 0.0416 degree data from year 1988
+read 0.0416 degree data from year 1989
+read 0.0416 degree data from year 1990
+read 0.0416 degree data from year 1991
+read 0.0416 degree data from year 1992
+read 0.0416 degree data from year 1993
+read 0.0416 degree data from year 1994
+read 0.0416 degree data from year 1995
+read 0.0416 degree data from year 1996
+read 0.0416 degree data from year 1997
+read 0.0416 degree data from year 1998
+read 0.0416 degree data from year 1999
+read 0.0416 degree data from year 2000
+read 0.0416 degree data from year 2001
+read 0.0416 degree data from year 2002
+read 0.0416 degree data from year 2003
+read 0.0416 degree data from year 2004
+read 0.0416 degree data from year 2005
+read 0.0416 degree data from year 2006
+read 0.0416 degree data from year 2007
+read 0.0416 degree data from year 2008
+read 0.0416 degree data from year 2009
+read 0.0416 degree data from year 2010
+read 0.0416 degree data from year 2011
+read 0.0416 degree data from year 2012
+read 0.0416 degree data from year 2013
+read 0.0416 degree data from year 2014
+read 0.0416 degree data from year 2015
+read 0.0416 degree data from year 2016
+read 0.0416 degree data from year 2017
+read 0.0416 degree data from year 2018
+read 0.0416 degree data from year 2019
+hr shape: (14610, 696, 1416)
+lr shape: (14610, 116, 236)
+lr size (399963360,)
+Epoch [1/50], Avg G Loss: 20.71670322
+New best model saved with G Loss: 20.71670322
+Epoch [2/50], Avg G Loss: 0.88469739
+New best model saved with G Loss: 0.88469739
+Epoch [3/50], Avg G Loss: 0.74100922
+New best model saved with G Loss: 0.74100922
+Epoch [4/50], Avg G Loss: 0.61308812
+New best model saved with G Loss: 0.61308812
+Epoch [5/50], Avg G Loss: 1.00686054
+No improvement for 1 epochs during initialization.
+Epoch [6/50], Avg G Loss: 0.48104917
+New best model saved with G Loss: 0.48104917
+Epoch [7/50], Avg G Loss: 0.75516332
+No improvement for 1 epochs during initialization.
+Epoch [8/50], Avg G Loss: 0.35318367
+New best model saved with G Loss: 0.35318367
+Epoch [9/50], Avg G Loss: 0.41642608
+No improvement for 1 epochs during initialization.
+Epoch [10/50], Avg G Loss: 0.39279462
+No improvement for 2 epochs during initialization.
+Epoch [11/50], Avg G Loss: 0.26736052
+New best model saved with G Loss: 0.26736052
+Epoch [12/50], Avg G Loss: 0.41517677
+No improvement for 1 epochs during initialization.
+Epoch [13/50], Avg G Loss: 1.54956830
+No improvement for 2 epochs during initialization.
+Epoch [14/50], Avg G Loss: 0.21968772
+New best model saved with G Loss: 0.21968772
+Epoch [15/50], Avg G Loss: 0.35633813
+No improvement for 1 epochs during initialization.
+Epoch [16/50], Avg G Loss: 0.18638001
+New best model saved with G Loss: 0.18638001
+Epoch [17/50], Avg G Loss: 0.23215286
+No improvement for 1 epochs during initialization.
+Epoch [18/50], Avg G Loss: 0.22504581
+No improvement for 2 epochs during initialization.
+Epoch [19/50], Avg G Loss: 0.16192912
+New best model saved with G Loss: 0.16192912
+Epoch [20/50], Avg G Loss: 0.21877741
+No improvement for 1 epochs during initialization.
+Epoch [21/50], Avg G Loss: 0.15366023
+No improvement for 2 epochs during initialization.
+Epoch [22/50], Avg G Loss: 0.15746050
+No improvement for 3 epochs during initialization.
+Epoch [23/50], Avg G Loss: 0.19088371
+No improvement for 4 epochs during initialization.
+Epoch [24/50], Avg G Loss: 0.11685911
+New best model saved with G Loss: 0.11685911
+Epoch [25/50], Avg G Loss: 0.24323807
+No improvement for 1 epochs during initialization.
+Epoch [26/50], Avg G Loss: 0.02911465
+New best model saved with G Loss: 0.02911465
+Epoch [27/50], Avg G Loss: 0.04130558
+No improvement for 1 epochs during initialization.
+Epoch [28/50], Avg G Loss: 0.05211837
+No improvement for 2 epochs during initialization.
+Epoch [29/50], Avg G Loss: 0.04692628
+No improvement for 3 epochs during initialization.
+Epoch [30/50], Avg G Loss: 0.03561124
+No improvement for 4 epochs during initialization.
+Epoch [31/50], Avg G Loss: 0.04125379
+No improvement for 5 epochs during initialization.
+Early stopping triggered during initial training.
+Epoch: [1/100], Avg G Loss: 0.04129245, Avg D Loss: 12.15594009
+New best G model saved with G Loss: 0.04129245
+Epoch: [2/100], Avg G Loss: 0.05568059, Avg D Loss: 0.51979573
+No improvement for 1 epochs in adversarial phase.
+Epoch: [3/100], Avg G Loss: 0.04610466, Avg D Loss: 0.27744288
+No improvement for 2 epochs in adversarial phase.
+Epoch: [4/100], Avg G Loss: 0.06696944, Avg D Loss: 3.06884455
+No improvement for 3 epochs in adversarial phase.
+Epoch: [5/100], Avg G Loss: 0.01927904, Avg D Loss: 0.01235288
+New best G model saved with G Loss: 0.01927904
+Epoch: [6/100], Avg G Loss: 0.03241277, Avg D Loss: 2.61229853
+No improvement for 1 epochs in adversarial phase.
+Epoch: [7/100], Avg G Loss: 0.01826275, Avg D Loss: 0.00630329
+No improvement for 2 epochs in adversarial phase.
+Epoch: [8/100], Avg G Loss: 0.04900697, Avg D Loss: 3.92111733
+No improvement for 3 epochs in adversarial phase.
+Epoch: [9/100], Avg G Loss: 0.01615163, Avg D Loss: 0.09012064
+No improvement for 4 epochs in adversarial phase.
+Epoch: [10/100], Avg G Loss: 0.05813257, Avg D Loss: 2.29258769
+No improvement for 5 epochs in adversarial phase.
+Epoch: [11/100], Avg G Loss: 0.02571331, Avg D Loss: 0.01143953
+No improvement for 6 epochs in adversarial phase.
+Epoch: [12/100], Avg G Loss: 0.02383507, Avg D Loss: 3.98486716
+No improvement for 7 epochs in adversarial phase.
+Epoch: [13/100], Avg G Loss: 0.14762678, Avg D Loss: 0.03311292
+No improvement for 8 epochs in adversarial phase.
+Epoch: [14/100], Avg G Loss: 0.03541853, Avg D Loss: 2.42278898
+No improvement for 9 epochs in adversarial phase.
+Epoch: [15/100], Avg G Loss: 0.01689877, Avg D Loss: 0.02377580
+No improvement for 10 epochs in adversarial phase.
+Epoch: [16/100], Avg G Loss: 0.03238734, Avg D Loss: 2.68424200
+No improvement for 11 epochs in adversarial phase.
+Epoch: [17/100], Avg G Loss: 0.01455974, Avg D Loss: 0.01642038
+No improvement for 12 epochs in adversarial phase.
+Epoch: [18/100], Avg G Loss: 0.03272283, Avg D Loss: 3.87054270
+No improvement for 13 epochs in adversarial phase.
+Epoch: [19/100], Avg G Loss: 0.02179593, Avg D Loss: 0.00664052
+No improvement for 14 epochs in adversarial phase.
+Epoch: [20/100], Avg G Loss: 0.05055376, Avg D Loss: 3.75072752
+No improvement for 15 epochs in adversarial phase.
+Epoch: [21/100], Avg G Loss: 0.01798881, Avg D Loss: 0.01782255
+No improvement for 16 epochs in adversarial phase.
+Epoch: [22/100], Avg G Loss: 0.02788640, Avg D Loss: 6.60946455
+No improvement for 17 epochs in adversarial phase.
+Epoch: [23/100], Avg G Loss: 0.01585948, Avg D Loss: 0.02122777
+No improvement for 18 epochs in adversarial phase.
+Epoch: [24/100], Avg G Loss: 0.05455175, Avg D Loss: 5.70799419
+No improvement for 19 epochs in adversarial phase.
+Epoch: [25/100], Avg G Loss: 0.02789045, Avg D Loss: 0.01740380
+No improvement for 20 epochs in adversarial phase.
+Early stopping triggered during adversarial learning.

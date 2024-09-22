@@ -1,6 +1,6 @@
 import os
 # # Set CUDA device
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import time
 import numpy as np
@@ -14,7 +14,7 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_g_lr_26, SRGAN_g_hr_26, SRGAN_g_hr_60_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_g_lr_26, SRGAN_g_hr_26, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
@@ -40,8 +40,8 @@ version = 'v8.1' # check the version.txt file for historical versions under outp
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = True
-readrawdata  = True
+initial_training = False
+readrawdata  = False
 var = 'tmin'
 high_deg = 0 # 100 to 25km
 w1_fn1=1e-4
@@ -104,7 +104,7 @@ if elevation:
     G = SRGAN_g_lr_26(in_channels=2).to(device)
 else:
     G = SRGAN_g_lr_26(in_channels=1).to(device)
-D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
+D = SRGAN_d_lr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
 

@@ -1,19 +1,17 @@
 models/
 output/
-data_explore.py
-hist_data/
+gcm_ds/
 __pycache__/dataread.cpython-39.pyc
 __pycache__/loss_torch.cpython-39.pyc
 __pycache__/scalers.cpython-39.pyc
 __pycache__/srgan_torch.cpython-39.pyc
 
-dataread.py
 __pycache__/dataread.cpython-38.pyc
 __pycache__/loss_torch.cpython-38.pyc
 __pycache__/srgan_torch.cpython-38.pyc
 slurm-error.txt
 slurm-output.txt
-dataread.py
+
 slurm_output/slurm_output_test.err
 slurm_output/slurm_output_test.out
 slurm_output/slurm-error_50_mn.txt

@@ -1,0 +1,127 @@
+Using device: cuda
+read 0.25 degree data from year 1990
+read 0.25 degree data from year 1991
+read 0.25 degree data from year 1992
+read 0.25 degree data from year 1993
+read 0.25 degree data from year 1994
+read 0.25 degree data from year 1995
+read 0.25 degree data from year 1996
+read 0.25 degree data from year 1997
+read 0.25 degree data from year 1998
+read 0.25 degree data from year 1999
+read 0.25 degree data from year 2000
+read 0.25 degree data from year 2001
+read 0.25 degree data from year 2002
+read 0.25 degree data from year 2003
+read 0.25 degree data from year 2004
+read 0.25 degree data from year 2005
+read 0.25 degree data from year 2006
+read 0.25 degree data from year 2007
+read 0.25 degree data from year 2008
+read 0.25 degree data from year 2009
+read 0.25 degree data from year 2010
+read 0.25 degree data from year 2011
+read 0.25 degree data from year 2012
+read 0.25 degree data from year 2013
+read 0.25 degree data from year 2014
+read 0.25 degree data from year 2015
+read 0.25 degree data from year 2016
+read 0.25 degree data from year 2017
+read 0.25 degree data from year 2018
+read 0.25 degree data from year 2019
+read 0.0416 degree data from year 1990
+read 0.0416 degree data from year 1991
+read 0.0416 degree data from year 1992
+read 0.0416 degree data from year 1993
+read 0.0416 degree data from year 1994
+read 0.0416 degree data from year 1995
+read 0.0416 degree data from year 1996
+read 0.0416 degree data from year 1997
+read 0.0416 degree data from year 1998
+read 0.0416 degree data from year 1999
+read 0.0416 degree data from year 2000
+read 0.0416 degree data from year 2001
+read 0.0416 degree data from year 2002
+read 0.0416 degree data from year 2003
+read 0.0416 degree data from year 2004
+read 0.0416 degree data from year 2005
+read 0.0416 degree data from year 2006
+read 0.0416 degree data from year 2007
+read 0.0416 degree data from year 2008
+read 0.0416 degree data from year 2009
+read 0.0416 degree data from year 2010
+read 0.0416 degree data from year 2011
+read 0.0416 degree data from year 2012
+read 0.0416 degree data from year 2013
+read 0.0416 degree data from year 2014
+read 0.0416 degree data from year 2015
+read 0.0416 degree data from year 2016
+read 0.0416 degree data from year 2017
+read 0.0416 degree data from year 2018
+read 0.0416 degree data from year 2019
+hr shape: (10957, 696, 1416)
+lr shape: (10957, 116, 236)
+lr size (299958832,)
+Epoch [1/100], Avg G Loss: 21.10248711
+New best model saved with G Loss: 21.10248711
+Epoch [2/100], Avg G Loss: 1.34332339
+New best model saved with G Loss: 1.34332339
+Epoch [3/100], Avg G Loss: 1.26810604
+New best model saved with G Loss: 1.26810604
+Epoch [4/100], Avg G Loss: 1.51514092
+No improvement for 1 epochs during initialization.
+Epoch [5/100], Avg G Loss: 0.89636727
+New best model saved with G Loss: 0.89636727
+Epoch [6/100], Avg G Loss: 1.01100776
+No improvement for 1 epochs during initialization.
+Epoch [7/100], Avg G Loss: 0.98387322
+No improvement for 2 epochs during initialization.
+Epoch [8/100], Avg G Loss: 0.70506554
+New best model saved with G Loss: 0.70506554
+Epoch [9/100], Avg G Loss: 0.85779767
+No improvement for 1 epochs during initialization.
+Epoch [10/100], Avg G Loss: 0.49704986
+New best model saved with G Loss: 0.49704986
+Epoch [11/100], Avg G Loss: 1.36764577
+No improvement for 1 epochs during initialization.
+Epoch [12/100], Avg G Loss: 0.68723335
+No improvement for 2 epochs during initialization.
+Epoch [13/100], Avg G Loss: 0.51126085
+No improvement for 3 epochs during initialization.
+Epoch [14/100], Avg G Loss: 0.56029977
+No improvement for 4 epochs during initialization.
+Epoch [15/100], Avg G Loss: 0.72297807
+No improvement for 5 epochs during initialization.
+Early stopping triggered during initial training.
+Traceback (most recent call last):
+  File "/mnt/data/home/7hn/project/SRGAN_torch/train_82.py", line 393, in <module>
+    train()
+  File "/mnt/data/home/7hn/project/SRGAN_torch/train_82.py", line 257, in train
+    loss_d = net_with_loss_D(lr_patch, hr_patch)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/project/SRGAN_torch/loss_torch.py", line 52, in forward
+    logits_real = self.D_net(hr)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/parallel/data_parallel.py", line 183, in forward
+    return self.module(*inputs[0], **module_kwargs[0])
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/project/SRGAN_torch/srgan_torch.py", line 1307, in forward
+    x = self.prelu2(self.bn1(x))
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/modules/batchnorm.py", line 175, in forward
+    return F.batch_norm(
+  File "/mnt/data/home/7hn/miniconda3/envs/gan_torch/lib/python3.9/site-packages/torch/nn/functional.py", line 2509, in batch_norm
+    return torch.batch_norm(
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.88 GiB. GPU 

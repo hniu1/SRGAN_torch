@@ -1,6 +1,6 @@
 import os
-# # Set CUDA device
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+# Set CUDA device
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import time
 import numpy as np
@@ -36,7 +36,7 @@ else:
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 8
+batch_size = 4
 n_epoch_init = 50
 n_epoch = 100
 # create folders to save result images and trained models
@@ -44,11 +44,12 @@ version = 'v7.0' # check the version.txt file for historical versions under outp
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = True
-readrawdata  = True
+initial_training = False
+readrawdata  = False
 var = 'tmax'
 w1_fn1=1e-6
-w2_fn2=1e4
+w2_fn2=1e3
+high_deg=2
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -68,7 +69,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax', var=var)
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=high_deg, scaler = 'minmax', var=var)
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)

@@ -1,6 +1,6 @@
 import os
 # Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import time
 import numpy as np
@@ -33,15 +33,15 @@ print(f"Using device: {device}")
 
 ###====================== HYPER-PARAMETERS ===========================###
 batch_size = 32
-n_epoch_init = 100
-n_epoch = 200
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
-version = 'v7.1' # check the version.txt file for historical versions under output directory
+version = 'v7.7' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
-readrawdata  = False
+initial_training = True
+readrawdata  = True
 var = 'tmax'
 high_deg = 0 # 100 to 25km
 w1_fn1=1e-4
@@ -151,7 +151,7 @@ def train():
     #################################################################################
     if initial_training:
         no_improve_epochs_init = 5  # Number of epochs to wait before stopping if no improvement during init phase
-        min_delta_init = 1e-8    # Minimum change to qualify as an improvement during init phase
+        min_delta_init = 1e-3    # Minimum change to qualify as an improvement during init phase
         best_loss_init = float('inf')  # Track the best loss to compare against during init phase
         epochs_since_improvement_init = 0  # Track the number of epochs since last improvement during init phase
 
@@ -203,8 +203,8 @@ def train():
     #################################################################################
     # Adversarial learning with Early stop
     #################################################################################
-    no_improve_epochs_adv = 100  # Number of epochs to wait before stopping if no improvement in adversarial phase
-    min_delta_adv = 1e-8      # Minimum change to qualify as an improvement during adversarial phase
+    no_improve_epochs_adv = 10  # Number of epochs to wait before stopping if no improvement in adversarial phase
+    min_delta_adv = 1e-3      # Minimum change to qualify as an improvement during adversarial phase
     best_g_loss_adv = float('inf')  # Track the best generator loss
     best_d_loss_adv = float('inf')  # Track the best discriminator loss
     epochs_since_improvement_adv = 0  # Track the number of epochs since last improvement in adversarial phase
@@ -352,7 +352,8 @@ def evaluate():
     nhr2 = shp[2]
     y = out.flatten()
     yinv = loaded_scaler.inverse_transform(y.reshape(-1, 1))
-    yinv[yinv < 0] = 0
+    if var == 'pr' or var == 'prcp':
+        yinv[yinv < 0] = 0
     yinv = np.reshape(yinv, (tt, nhr1, nhr2))
     np.save(f'{path_output}/y_pred_init.npy', yinv)
     
@@ -382,7 +383,8 @@ def evaluate():
     nhr2 = shp[2]
     y = out.flatten()
     yinv = loaded_scaler.inverse_transform(y.reshape(-1, 1))
-    yinv[yinv < 0] = 0
+    if var == 'pr' or var == 'prcp':
+        yinv[yinv < 0] = 0
     yinv = np.reshape(yinv, (tt, nhr1, nhr2))
     np.save(f'{path_output}/y_pred.npy', yinv)
 

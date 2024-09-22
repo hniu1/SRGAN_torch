@@ -4,11 +4,11 @@ from netCDF4 import Dataset
 import cv2
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from sklearn.model_selection import train_test_split
-from scalers import Log1pScaler
 #import keras
 #from keras.models import Sequential
 import datetime
 import pickle
+import matplotlib.pyplot as plt
 
 def read_Daymet(var, deg=1):
     fil        = Dataset(f'/mnt/data/ClimateSR/daymet4x/DaymetV4_VIC4_prcp_1980-2022_{deg}deg_SEtest.nc')
@@ -20,33 +20,24 @@ def read_Daymet(var, deg=1):
     # broadcasted_time = np.broadcast_to(time3d, (np.shape(hr_var)[0], np.shape(hr_var)[1], np.shape(hr_var)[2]))
     return hr_var
 
-def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=True):
+def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
     arrays = []
     for year in range(year_start, year_end): #2023
         print(f'read {deg} degree data from year {year}')
-        if Daymet_ERA5:
-            fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
-            # fil        = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
-            # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
-            # fil        = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/createGrid_consv/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
+        if not Daymet_ERA5:
+            fil        = Dataset(f'/mnt/data/ClimateSR/daymet4x_US/US/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
         else:
-            # fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # newgrid data in sunsphere
-            # fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # old grid data in sunsphere
-            fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_{var}_{year}_{deg}deg_US.nc')
-
+            fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4-ERA5/DaymetV4-ERA5_VIC4_prcp_{year}_{deg}deg_US.nc')
         hr_var     = fil.variables[f'{var}'][:]
         arrays.append(np.array(hr_var))
     data = np.concatenate(arrays, axis=0)
     data[np.isnan(data)] = 0
-    if var == 'pr' or var == 'prcp':
-        data[data < 0] = 0
-    data = data.astype('float32')
+    data[data < 0] = 0
+
     return data
 
 def read_elev(tt, deg=1):
-    felev      = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/VIC4a_DEM_{deg}deg.nc')
-    # felev      = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/new_createGrid/VIC4a_DEM_{deg}deg.nc')
-
+    felev      = Dataset(f'/mnt/data/ClimateSR/daymet4x_US/US/VIC4_DEM_{deg}deg_US.nc')
     elev1      = felev.variables["DEM"]
     elev       = np.tile(elev1,(tt,1,1))
     elev = elev.astype('float32')
@@ -74,7 +65,7 @@ def split(lr,hr):
     X_train, X_test, y_train, y_test = train_test_split(lr, hr, test_size=0.2, random_state=42)
     return(X_train, X_test, y_train, y_test)
 
-def invtrans_write(y,scalar,name,path_output,elevation=False, var='prcp'):
+def invtrans_write(y,scalar,name,path_output,elevation=False):
     shp    = np.shape(y)
     tt     = shp[0]
     nhr1   = shp[1]
@@ -84,8 +75,7 @@ def invtrans_write(y,scalar,name,path_output,elevation=False, var='prcp'):
         # elev_scale = y[:, :, :, 1:2]
     y      = y.flatten()
     yinv   = scalar.inverse_transform(y.reshape(-1, 1))
-    if var == 'pr' or var == 'prcp':
-        yinv[yinv<0] = 0
+    yinv[yinv<0] = 0
     yinv   = np.reshape(yinv,(tt,nhr1,nhr2))
     np.save(f'{path_output}/{name}.npy',yinv)
     # if elev:
@@ -93,26 +83,34 @@ def invtrans_write(y,scalar,name,path_output,elevation=False, var='prcp'):
     #     elev_scale_inv   = scalar.inverse_transform(elev_scale.reshape(-1, 1))
     #     elev_scale_inv   = np.reshape(elev_scale_inv,(tt,nhr1,nhr2))
 
-def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False, scaler = 'standard', var = "prcp"):
+def plot_histogram(data, save_file):
+    # Approach 1: Flatten the array
+    flattened_data = data.flatten()
+    plt.figure(figsize=(10, 6))
+    plt.hist(flattened_data, bins=30, alpha=0.7, color='blue', edgecolor='white', log=True)
+    plt.title(f'Histogram of {save_file} data')
+    plt.xlabel('Precipitation')
+    plt.ylabel('Frequency (log scale)')
+    plt.savefig(f'./hist_data/hist_{save_file}.png', dpi=300)
+    plt.show()
+
+def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=False, Daymet_ERA5=False, high_deg=False):
 
 # Read variables nd generate low resolution version
     deg_hr = 0.25
     deg_lr = 1
-    if high_deg == 1:
+    if high_deg:
         deg_hr = 0.0416
         deg_lr = 0.25
-    elif high_deg == 2:
-        deg_hr = 0.0416
-        deg_lr = 1
 
     # lr_prect = read_Daymet("prcp", deg=1)
     # hr_prect = read_Daymet("prcp", deg=0.25)
     if not Daymet_ERA5:
-        lr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023,deg=deg_lr)
-        hr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023, deg=deg_hr)
+        lr_prect = read_Daymet_yearly("prcp", year_start=2020, year_end=2023,deg=deg_lr)
+        hr_prect = read_Daymet_yearly("prcp", year_start=2020, year_end=2023, deg=deg_hr)
     else:
-        lr_prect = read_Daymet_yearly(var, year_start=1980, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
-        hr_prect = read_Daymet_yearly(var, year_start=1980, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
+        lr_prect = read_Daymet_yearly("pr", year_start=2018, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5)
+        hr_prect = read_Daymet_yearly("pr", year_start=2018, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
     # time = np.reshape(time,(tt,nhr1,nhr2,1))
     print(f'hr shape: {np.shape(hr_prect)}')
     print(f'lr shape: {np.shape(lr_prect)}')
@@ -123,21 +121,13 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     nlr2 = lr_prect.shape[2]
     tt = hr_prect.shape[0]
 # Scale high-resolution precipitation ("y")
-    if scaler == 'standard':
-        scaler_hrprect  = StandardScaler()
-    elif scaler == 'robust':
-        scaler_hrprect  = RobustScaler()
-    elif scaler == 'minmax':
-        scaler_hrprect  = MinMaxScaler()
-        # if var == 'tmax' or 'tmin':
-        #     scaler_hrprect  = MinMaxScaler(feature_range=(-1, 1))
-    elif scaler == 'log':
-        scaler_hrprect  = Log1pScaler()
-    else:
-        scaler_hrprect  = StandardScaler()
-
+    scaler_hrprect  = StandardScaler()
+    # scaler_hrprect  = RobustScaler()
+    # scaler_hrprect  = MinMaxScaler()
     hr_prect        = hr_prect.flatten()
     lr_prect        = lr_prect.flatten()
+    plot_histogram(hr_prect, 'hr')
+    plot_histogram(lr_prect, 'lr')
     combined_images = np.concatenate([hr_prect, lr_prect], axis=0)
     scaler_hrprect.fit(combined_images.reshape(-1,1))
 
@@ -148,19 +138,37 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     lr_prect_scaled = scaler_hrprect.transform(lr_prect.reshape(-1, 1))
     lr_prect_scaled = np.reshape(lr_prect_scaled,(tt,nlr1,nlr2,1))
 
+    plot_histogram(hr_prect_scaled, 'hr_scaled_ss')
+    plot_histogram(lr_prect_scaled, 'lr_scaled_ss')
+
+    ################### log transform #################################
+
+    hr_prect_scaled = np.log1p(hr_prect.flatten())
+    lr_prect_scaled = np.log1p(lr_prect.flatten())
+    max1 = np.max(hr_prect_scaled)
+    max2 = np.max(lr_prect_scaled)
+    prmax = np.maximum(max1,max2)
+    hr_prect_scaled_log = hr_prect_scaled/prmax
+    lr_prect_scaled_log = lr_prect_scaled/prmax
+    # hr_prect_scaled_log = np.reshape(hr_prect_scaled_log,(tt,nhr1,nhr2,1))
+    # lr_prect_scaled_log = np.reshape(lr_prect_scaled_log,(tt,nhr1,nhr2,1))
+
+    plot_histogram(hr_prect_scaled_log, 'hr_scaled_log')
+    plot_histogram(lr_prect_scaled_log, 'lr_scaled_log')
+
     hr = hr_prect_scaled[:,:,:,:]
     lr = lr_prect_scaled[:,:,:,:]
     
     if elevation:
-        scaler_elev  = MinMaxScaler()
-        elev = read_elev(tt, deg=deg_lr)
+        scaler_elev  = StandardScaler()
+        elev = read_elev(tt)
         scaler_elev.fit(elev.flatten().reshape(-1, 1))
         elev_scaled = scaler_elev.transform(elev.flatten().reshape(-1, 1))
         elev_scaled = np.reshape(elev_scaled,(tt,nlr1,nlr2,1))
         np.save(f'{path_output}/elev_lr_scaled.npy',elev_scaled)
         lr = np.concatenate((lr_prect_scaled,elev_scaled),axis=3)
         if elevation_hr:
-            elev_hr = read_elev(tt, deg=deg_hr)
+            elev_hr = read_elev(tt, deg=0.25)
             elev_hr_scaled = scaler_elev.transform(elev_hr.flatten().reshape(-1, 1))
             elev_hr_scaled = np.reshape(elev_hr_scaled,(tt,nhr1,nhr2,1))
             np.save(f'{path_output}/elev_hr_scaled.npy',elev_hr_scaled)
@@ -172,10 +180,10 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     with open(f'./{checkpoint_dir}/scaler.pkl', 'wb') as f:
         pickle.dump(scaler_hrprect, f)
 
-    invtrans_write(X_train,scaler_hrprect,"x_train",path_output, elevation, var)
-    invtrans_write(X_test,scaler_hrprect,"x_test",path_output, elevation, var)
-    invtrans_write(y_train,scaler_hrprect,"y_train",path_output, elevation_hr, var)
-    invtrans_write(y_test,scaler_hrprect,"y_test",path_output, elevation_hr, var)
+    invtrans_write(X_train,scaler_hrprect,"x_train",path_output, elevation)
+    invtrans_write(X_test,scaler_hrprect,"x_test",path_output, elevation)
+    invtrans_write(y_train,scaler_hrprect,"y_train",path_output, elevation_hr)
+    invtrans_write(y_test,scaler_hrprect,"y_test",path_output, elevation_hr)
 
     train_lr = [X_train[i] for i in range(X_train.shape[0])]
     test_lr = [X_test[i] for i in range(X_test.shape[0])]
@@ -183,3 +191,15 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     test_hr = [y_test[i] for i in range(y_test.shape[0])]
 
     return train_lr, test_lr, train_hr, test_hr
+
+if __name__ == '__main__':
+    version = 'v0.4'
+    elevation = False
+    elevation_hr = False
+
+    checkpoint_dir = f"models/{version}"
+    path_output = f'./output/{version}'
+    
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, high_deg=True)
+
+    print

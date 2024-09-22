@@ -36,13 +36,13 @@ def plot_map(var,X_test,y_test,y_test_predict,y_test_predict_init,exp,metric='me
 
     #print(np.min(y2))
     #print(np.max(y2))
-    fig, ax = plt.subplots(2, 2, figsize=(16,8))
+    fig, ax = plt.subplots(2, 2, figsize=(12,8))
     ll = -1
     ul = 1
-    if (var == "t2"):
-        cmap = 'Reds'
-        ll = 0
-        ul = 5
+    if (var == "tmax") or (var == "tmin"):
+        cmap = 'Spectral_r'
+        ll = np.floor(np.min(y1))
+        ul = np.ceil(np.max(y1))
     else:
         # cmap = 'GnBu'
         cmap = 'Spectral'
@@ -63,50 +63,18 @@ def plot_map(var,X_test,y_test,y_test_predict,y_test_predict_init,exp,metric='me
     ax[1][0].set_title("High-Res (Predicted Initial Training)")
     mm4 = ax[1][1].imshow(y3[::-1,:],vmin=ll,vmax=ul,cmap =cmap)
     ax[1][1].set_title("High-Res (Predicted)")
-    plt.colorbar(mm1,ax=ax[0][0],shrink=0.2)
-    plt.colorbar(mm2,ax=ax[0][1],shrink=0.2)
-    plt.colorbar(mm3,ax=ax[1][0],shrink=0.2)
-    plt.colorbar(mm4,ax=ax[1][1],shrink=0.2)
+    # plt.colorbar(mm1,ax=ax[0][0],shrink=0.2)
+    # plt.colorbar(mm2,ax=ax[0][1],shrink=0.2)
+    # plt.colorbar(mm3,ax=ax[1][0],shrink=0.2)
+    # plt.colorbar(mm4,ax=ax[1][1],shrink=0.2)
+     # Adjust spacing to make room for the colorbar at the bottom
+    fig.subplots_adjust(left=0.02, right=.98, top=0.9, bottom=0.10, wspace=0.1)
+    # Create a colorbar axis at the bottom and make it bigger
+    fig.colorbar(mm1, ax=ax, orientation='horizontal', fraction=0.03)
     # ax[0].remove()
     plt.savefig(f'{path_fig}/spatialmaps_{exp}_{var}_{metric}.pdf')
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.close(fig)
-    # if metric == 'mean':
-    #     for i in range(10):
-    #         y0 = np.mean(X_test[i:i+1],axis=0)#*86400*1000
-    #         y1 = np.mean(y_test[i:i+1],axis=0)#*86400*1000
-    #         y2 = np.mean(y_test_predict[i:i+1],axis = 0)#*86400*1000
-    #         y3 = np.mean(y_test_predict_init[i:i+1],axis = 0)#*86400*1000
-    #         #print(np.min(y2))
-    #         #print(np.max(y2))
-    #         fig, ax = plt.subplots(2, 2, figsize=(16,8))
-    #         ll = -1
-    #         ul = 1
-    #         if (var == "t2"):
-    #             cmap = 'Reds'
-    #             ll = 0
-    #             ul = 5
-    #         else:
-    #             cmap = 'GnBu'
-    #             # cmap = 'BuPu'
-    #             ll = 0
-    #             ul = 100
-    #         mm1= ax[0][0].imshow(y0[::-1,:],vmin=ll,vmax=ul,cmap =cmap)
-    #         ax[0][0].set_title("Low-Res")
-    #         mm2 = ax[0][1].imshow(y1[::-1,:],vmin=ll,vmax=ul,cmap =cmap)
-    #         ax[0][1].set_title("High-Res")
-    #         mm3 = ax[1][0].imshow(y2[::-1,:],vmin=ll,vmax=ul,cmap =cmap)
-    #         #mm3 = ax[2].imshow(y2[::-1,:,0],cmap =cmap)
-    #         ax[1][0].set_title("High-Res (Predicted Initial Training)")
-    #         mm4 = ax[1][1].imshow(y3[::-1,:],vmin=ll,vmax=ul,cmap =cmap)
-    #         ax[1][1].set_title("High-Res (Predicted)")
-    #         plt.colorbar(mm1,ax=ax[0][0],shrink=0.2)
-    #         plt.colorbar(mm2,ax=ax[0][1],shrink=0.2)
-    #         plt.colorbar(mm3,ax=ax[1][0],shrink=0.2)
-    #         plt.colorbar(mm4,ax=ax[1][1],shrink=0.2)
-    #         # ax[0].remove()
-    #         plt.savefig(f'{path_fig}/spatialmaps_{exp}_{var}_{i}.pdf')
-    #         plt.close(fig)
 
 def error(y_test,y_test_predict):
     y_testavg = np.mean(y_test[:,:,:],axis=0)
@@ -138,18 +106,31 @@ def plot_diff(var,y_test,y_test_predict,y_test_predict_init,exp,metric='mean'):
     diff2  = y3-y1
     ul = max(np.ceil(np.max(diff1)),np.ceil(np.max(diff2)))
     ll = -ul
-    if metric == "mean":
-        ul = 2
-        ll = -2
-    fig, ax = plt.subplots(1,2,  figsize=(10,5))
-    mm1 = ax[0].imshow(diff1[::-1,:],vmin=ll,vmax=ul,cmap='RdBu')
+    if (var == "tmax") or (var == "tmin"):
+        cmap='RdBu_r'
+        if var == "tmin":
+            ul = 2
+            ll = -2
+    else:
+        cmap='RdBu'
+        if metric == "mean":
+            ul = 2
+            ll = -2
+    fig, ax = plt.subplots(1,2,  figsize=(10,4))
+    mm1 = ax[0].imshow(diff1[::-1,:],vmin=ll,vmax=ul,cmap=cmap)
     ax[0].set_title("Diff (initial)")
-    mm2 = ax[1].imshow(diff2[::-1,:],vmin=ll,vmax=ul,cmap='RdBu')
+    mm2 = ax[1].imshow(diff2[::-1,:],vmin=ll,vmax=ul,cmap=cmap)
     ax[1].set_title("Diff")
 
-    plt.colorbar(mm1,ax=ax[0],shrink=0.3)
-    plt.colorbar(mm2,ax=ax[1],shrink=0.3)
-    plt.tight_layout()
+    # plt.colorbar(mm1,ax=ax[0],shrink=0.3)
+    # plt.colorbar(mm2,ax=ax[1],shrink=0.3)
+    # Add a single color bar at the bottom of both plots
+    # Adjust spacing to make room for the colorbar at the bottom
+    fig.subplots_adjust(left=0.02, right=.98, top=0.9, bottom=0.10, wspace=0.1)
+    # Create a colorbar axis at the bottom and make it bigger
+    fig.colorbar(mm1, ax=ax, orientation='horizontal', fraction=0.05)    # cbar.set_label('Colorbar Label')  # Optional: add label to the color bar
+
+    # plt.tight_layout()
     plt.savefig(f'{path_fig}/spatialmaps_{exp}_{var}_{metric}_diff.pdf')
 
 def plot_diff_version(var,exp):
@@ -179,7 +160,7 @@ def plot_loss(var,val,train,exp):
     plt.savefig(f'{path_output}/{var}_val_train_loss_{exp}.pdf')
 
 def plot_density_output(y_test, y_test_predict_init, y_test_predict):
-    bins = np.arange(-10, 450 + 5, 5)
+    bins = np.arange(-50, 100 + 5, 5) # 450
     # Set up the matplotlib figure
     plt.figure(figsize=(10, 6))
     # Plot histogram for the first variable
@@ -213,7 +194,6 @@ def plot_density_output(y_test, y_test_predict_init, y_test_predict):
 
 def main():
     exp = version
-    var = "prcp"
     X_test,y_test,y_test_predict, y_test_predict_init = read_data(path_output, var,exp)
     # y_test,y_test_predict,val,train = read_data(var,exp)
     print(np.min(y_test_predict))
@@ -230,12 +210,15 @@ def main():
     # # plot_map(var,y_test,y_test_predict,exp)
     plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp)
     plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '95th')
+    plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '25th')
     # plot_diff_version(var,exp)
 
 
 if __name__ == "__main__":
-    version = 'v5.1'
+    version = 'v7.7'
     version_diff = 'v0.1'
+    
+    var = "tmax"
     path_output = f'./output/{version}'
     path_fig = f'./output/{version}/fig'
     os.makedirs(path_fig, exist_ok=True)
