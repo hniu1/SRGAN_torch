@@ -120,3 +120,5 @@ Epoch [3/100], Avg G Loss: 4.58092249
 New best model saved with G Loss: 4.58092249
 Epoch [4/100], Avg G Loss: 3.84529557
 New best model saved with G Loss: 3.84529557
+Epoch [5/100], Avg G Loss: 3.22357123
+New best model saved with G Loss: 3.22357123
