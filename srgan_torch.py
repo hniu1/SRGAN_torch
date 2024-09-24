@@ -618,9 +618,9 @@ class SRGAN_g_hr_26_64RB(nn.Module):
         x = self.conv6(x)
         return x
 
-class SRGAN_g_hr_60_64RB(nn.Module): # from 100km to 4km
+class SRGAN_g_hhr_64RB(nn.Module): # from 100km to 4km
     def __init__(self, in_channels):
-        super(SRGAN_g_hr_60_64RB, self).__init__()
+        super(SRGAN_g_hhr_64RB, self).__init__()
         self.conv1 = nn.Conv2d(
             in_channels=in_channels, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=1, bias=False
         )
@@ -1283,6 +1283,69 @@ class SRGAN_d_hr_odd(nn.Module):
         self.bn4 = nn.BatchNorm2d(num_features=dim * 2)
         self.flat = nn.Flatten()
         self.dense = nn.Linear(in_features=1971072,out_features=1)
+
+        # Initialize weights
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.trunc_normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.trunc_normal_(m.weight, mean=1.0, std=0.02)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.trunc_normal_(m.weight, std=0.02)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.prelu1(self.conv1(x))
+        x = self.conv2(x)
+        # x= F.pad(x, (0, 1, 1, 0))  # [left, right, top, bot]
+        x = self.prelu2(self.bn1(x))
+        x = self.conv3(x)
+        x = self.prelu3(self.bn2(x))
+        x = self.conv4(x)
+        x = self.prelu4(self.bn3(x))
+        x = self.conv5(x)
+        x = self.prelu4(self.bn4(x))
+        x = self.flat(x)
+        x = self.dense(x)
+        # x = torch.sigmoid(x)  # Apply sigmoid function after the dense layer
+        return x
+    
+class SRGAN_d_hr(nn.Module):
+    def __init__(self, hr_size, dim=64):
+        super(SRGAN_d_hr, self).__init__()
+        self.conv1 = nn.Conv2d(
+            in_channels=1, out_channels=dim, kernel_size=(5, 5), stride=(1, 1), padding=1
+        )
+        self.lrelu = nn.LeakyReLU(0.2, inplace=True)
+        self.prelu1 = nn.PReLU()
+        self.conv2 = nn.Conv2d(
+            in_channels=dim, out_channels=dim, kernel_size=(5, 5), stride=(1, 1), padding=1, bias=False
+        )
+        self.prelu2 = nn.PReLU()
+        self.bn1 = nn.BatchNorm2d(num_features=dim)
+        self.conv3 = nn.Conv2d(
+            in_channels=dim, out_channels=dim, kernel_size=(9, 9), stride=(2, 2), padding=1, bias=False
+        )
+        self.prelu3 = nn.PReLU()
+        self.bn2 = nn.BatchNorm2d(num_features=dim)
+        self.conv4 = nn.Conv2d(
+            in_channels=dim, out_channels=dim * 2, kernel_size=(9, 9), stride=(2, 2), padding=1, bias=False
+        )
+        self.prelu4 = nn.PReLU()
+        self.bn3 = nn.BatchNorm2d(num_features=dim * 2)
+        self.conv5 = nn.Conv2d(
+            in_channels=dim * 2, out_channels=dim * 2, kernel_size=(5, 5), stride=(1, 1), padding=1, bias=False
+        )
+        self.prelu5 = nn.PReLU()
+        self.bn4 = nn.BatchNorm2d(num_features=dim * 2)
+        self.flat = nn.Flatten()
+        self.dense = nn.Linear(in_features=7417472,out_features=1)
 
         # Initialize weights
         self._initialize_weights()

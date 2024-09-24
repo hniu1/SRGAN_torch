@@ -33,8 +33,8 @@ print(f"Using device: {device}")
 
 ###====================== HYPER-PARAMETERS ===========================###
 batch_size = 16
-n_epoch_init = 100
-n_epoch = 200
+n_epoch_init = 50
+n_epoch = 100
 # create folders to save result images and trained models
 version = 'v5.1' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
@@ -42,6 +42,8 @@ elevation = True
 elevation_hr = False
 initial_training = True
 readrawdata  = True
+w1_fn1 = 1e-4
+w2_fn2 = 1e4
 
 checkpoint_dir = f"models/{version}"
 path_output = f'./output/{version}'
@@ -136,7 +138,8 @@ def train():
     # Define the loss functions for initial and adversarial training
     net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
     net_with_loss_D = WithLoss_D(D, G, criterion_gan)
-    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute)
+    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute, 
+                                 w1_fn1=w1_fn1, w2_fn2=w2_fn2)
 
     g_init_losses = []
     g_losses = []
@@ -226,7 +229,7 @@ def train():
             hr_patch = hr_patch.to(device)
             if epoch > 0:
                 # Train Generator
-                if d_loss < 0.7 or loss_g > 0.1:
+                if d_loss < 1.0:
                     g_optimizer.zero_grad()
                     loss_g = net_with_loss_G(lr_patch, hr_patch)
                     loss_g.backward()
@@ -235,7 +238,7 @@ def train():
                     with torch.no_grad(): # monitor g loss without train
                         loss_g = net_with_loss_G(lr_patch, hr_patch)
                 # Train Discriminator
-                if d_loss > 0.5:
+                if d_loss > 0.2:
                     d_optimizer.zero_grad()
                     loss_d = net_with_loss_D(lr_patch, hr_patch)
                     loss_d.backward()

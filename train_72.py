@@ -1,6 +1,6 @@
 import os
 # # Set CUDA device
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import time
 import numpy as np
@@ -71,7 +71,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=2, scaler = 'minmax', var=var)
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=high_deg, scaler = 'minmax', var=var)
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)

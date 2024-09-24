@@ -25,10 +25,10 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
     for year in range(year_start, year_end): #2023
         print(f'read {deg} degree data from year {year}')
         if Daymet_ERA5:
-            # fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
+            fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
             # fil        = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/Daymet_ERA5_VIC4a_prcp_{year}_{deg}deg.nc')
             # fil        = Dataset(f'/lustre/orion/cli138/proj-shared/7hn/data/Daymet/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc')
-            fil        = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/createGrid_consv/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
+            # fil        = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/createGrid_consv/Daymet_ERA5_VIC4a_{var}_{year}_{deg}deg.nc')
         else:
             # fil        = Dataset(f'/mnt/data/ClimateSR/newgrid/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # newgrid data in sunsphere
             # fil        = Dataset(f'/mnt/data/ClimateSR/data-for-haoran/US/DaymetV4_VIC4_prcp_{year}_{deg}deg_US.nc') # old grid data in sunsphere
@@ -43,8 +43,8 @@ def read_Daymet_yearly(var, year_start, year_end, deg=1, Daymet_ERA5=False):
     return data
 
 def read_elev(tt, deg=1):
-    # felev      = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/VIC4a_DEM_{deg}deg.nc')
-    felev      = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/new_createGrid/VIC4a_DEM_{deg}deg.nc')
+    felev      = Dataset(f'/mnt/data/ClimateSR/daymet_ERA/VIC4a_DEM_{deg}deg.nc')
+    # felev      = Dataset(f'/lustre/orion/proj-shared/cli138/dr6/Daymet-ERA5/new_createGrid/VIC4a_DEM_{deg}deg.nc')
 
     elev1      = felev.variables["DEM"]
     elev       = np.tile(elev1,(tt,1,1))
@@ -109,8 +109,8 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
         lr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023,deg=deg_lr)
         hr_prect = read_Daymet_yearly(var, year_start=2018, year_end=2023, deg=deg_hr)
     else:
-        lr_prect = read_Daymet_yearly(var, year_start=2000, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
-        hr_prect = read_Daymet_yearly(var, year_start=2000, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
+        lr_prect = read_Daymet_yearly(var, year_start=2015, year_end=2020, deg=deg_lr, Daymet_ERA5=Daymet_ERA5) #1990
+        hr_prect = read_Daymet_yearly(var, year_start=2015, year_end=2020, deg=deg_hr, Daymet_ERA5=Daymet_ERA5)
     # time = np.reshape(time,(tt,nhr1,nhr2,1))
     print(f'hr shape: {np.shape(hr_prect)}')
     print(f'lr shape: {np.shape(lr_prect)}')

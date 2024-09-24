@@ -234,7 +234,7 @@ def main():
 
 
 if __name__ == "__main__":
-    version = 'v4.0'
+    version = 'v5.1'
     version_diff = 'v0.1'
     path_output = f'./output/{version}'
     path_fig = f'./output/{version}/fig'

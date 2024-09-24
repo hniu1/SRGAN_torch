@@ -14,7 +14,7 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_hr_60_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_hr_26, SRGAN_g_hhr_64RB, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd, SRGAN_d_hr_odd
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
@@ -104,9 +104,9 @@ class TrainData(Dataset):
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_hr_60_64RB(in_channels=2).to(device)
+    G = SRGAN_g_hhr_64RB(in_channels=2).to(device)
 else:
-    G = SRGAN_g_hr_60_64RB(in_channels=1).to(device)
+    G = SRGAN_g_hhr_64RB(in_channels=1).to(device)
 D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
