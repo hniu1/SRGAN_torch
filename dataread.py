@@ -99,6 +99,7 @@ def daymetread(path_output, checkpoint_dir, elevation = False, elevation_hr=Fals
     deg_hr = 0.25
     deg_lr = 1
     if high_deg == 1:
+    if high_deg == 1:
         deg_hr = 0.0416
         deg_lr = 0.25
     elif high_deg == 2:
