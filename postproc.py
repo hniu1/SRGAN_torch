@@ -215,7 +215,11 @@ def main():
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     version = 'v7.7'
+=======
+    version = 'v7.2'
+>>>>>>> 6e5375d (update clean repo)
     version_diff = 'v0.1'
     
     var = "tmax"

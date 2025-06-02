@@ -18,3 +18,5 @@ Traceback (most recent call last):
   File "/ccs/home/haoranniu/miniconda3/envs/srgan/lib/python3.8/site-packages/torch/functional.py", line 71, in broadcast_tensors
     return _VF.broadcast_tensors(tensors)  # type: ignore
 RuntimeError: The size of tensor a (354) must match the size of tensor b (1416) at non-singleton dimension 3
+slurmstepd: error: *** JOB 1975924 ON andes-gpu7 CANCELLED AT 2024-09-24T10:55:35 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 1977058 ON andes-gpu1 CANCELLED AT 2024-09-25T09:38:27 ***

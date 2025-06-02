@@ -37,7 +37,10 @@ n_epoch_init = 50
 n_epoch = 400
 # create folders to save result images and trained models
 version = 'v2.7' # check the version.txt file for historical versions under output directory
+<<<<<<< HEAD
 version = 'v2.6' # check the version.txt file for historical versions under output directory
+=======
+>>>>>>> 6e5375d (update clean repo)
 save_dir = "samples"
 elevation = True
 elevation_hr = False
