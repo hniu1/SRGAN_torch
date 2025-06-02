@@ -21,6 +21,8 @@ slurm_output/slurm-output_50_mn.txt
 slurm_output/slurm-output_50.txt
 run_50_multinodes.sh
 run_50.sh
+run_40.sh
+run_41.sh
 run_test_ddp.sh
 slurm_output/slurm_60-error.txt
 slurm_output/slurm_60-output.txt
@@ -29,3 +31,18 @@ slurm_output/slurm_70-output.txt
 __pycache__/scalers.cpython-38.pyc
 slurm_output/slurm_80-error.txt
 slurm_output/slurm_80-output.txt
+train_50.py
+train_51.py
+train_52.py
+train_53.py
+train_60.py
+train_70.py
+train_71.py
+train_72.py
+train_73.py
+train_74.py
+train_80.py
+train_81.py
+train_82.py
+train_83.py
+train_84.py
