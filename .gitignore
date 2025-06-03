@@ -3,7 +3,6 @@ output/
 gcm_ds/
 train_0*.py
 train_1*.py
-train_2*.py
 train_3*.py
 train_4*.py
 train_50.py
