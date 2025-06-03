@@ -50,3 +50,4 @@ slurm_output/slurm_70-output.txt
 __pycache__/scalers.cpython-38.pyc
 slurm_output/slurm_80-error.txt
 slurm_output/slurm_80-output.txt
+train_50_*.py
