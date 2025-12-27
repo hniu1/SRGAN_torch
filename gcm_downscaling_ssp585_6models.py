@@ -6,11 +6,7 @@ Date: Dec 2024
 
 import os
 # Set CUDA device
-<<<<<<< HEAD
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-=======
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
->>>>>>> 6e5375d (update clean repo)
 
 import time
 import numpy as np
@@ -431,7 +427,6 @@ if __name__ == '__main__':
         elif var == 'tmin':
             version_lr = '8.5'
             version_hr = '8.6'
-<<<<<<< HEAD
         else:
             version_lr = '2.6'
             version_hr = '5.4'
@@ -443,21 +438,11 @@ if __name__ == '__main__':
         #####
         # gcms = ['ACCESS-CM2', 'BCC-CSM2-MR', 'CNRM-ESM2-1', 'MPI-ESM1-2-HR', 'MRI-ESM2-0', 'NorESM2-MM', 'EC-Earth3-CC', 'EC-Earth3-Veg', 'GFDL-CM4']
         gcms = ['TaiESM1']
-=======
-    
-        #####
-        gcm = 'MPI-ESM1-2-HR'
-        scenario = 'ssp585'
-        year = '198001-201912'
-        #####
-        gcms = ['ACCESS-CM2', 'BCC-CSM2-MR', 'CNRM-ESM2-1', 'MPI-ESM1-2-HR', 'MRI-ESM2-0', 'NorESM2-MM']
->>>>>>> 6e5375d (update clean repo)
 
         for gcm in gcms:
             if gcm == 'CNRM-ESM2-1':
                 ens = 'r1i1p1f2'
                 grid = 'gr'
-<<<<<<< HEAD
             # else:
             #     ens = 'r1i1p1f1'
             #     grid = 'gn'
@@ -467,18 +452,12 @@ if __name__ == '__main__':
             elif gcm == 'GFDL-CM4':
                 ens = 'r1i1p1f1'
                 grid = 'gr1'
-=======
->>>>>>> 6e5375d (update clean repo)
             else:
                 ens = 'r1i1p1f1'
                 grid = 'gn'
             print(f'Downscaling {var} {scenario} {gcm} .......')
 
-<<<<<<< HEAD
             path_gcm = f'/mnt/data/ClimateSR/gcm/{var}_day_{gcm}_{scenario}_{ens}_{grid}_{year}_1deg_Daymet_ERA5_VICa_BC_dims.nc'
-=======
-            path_gcm = f'/mnt/data/ClimateSR/gcm/{var}_day_{gcm}_{scenario}_{ens}_{grid}_{year}_1deg_Daymet_ERA5_VICa_BC.nc'
->>>>>>> 6e5375d (update clean repo)
             # path_gcm = f'/mnt/data/ClimateSR/gcm/{var}_day_MPI-ESM1-2-HR_ssp245_r1i1p1f1_gn_202001-205912_1deg_Daymet_ERA5_VICa_BC.nc'
 
             # #only run this line if the first time

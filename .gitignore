@@ -1,6 +1,7 @@
 models/
 output/
 gcm_ds/
+train_*.py
 train_0*.py
 train_1*.py
 train_3*.py
