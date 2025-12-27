@@ -9,10 +9,10 @@ downscaled_analysis/
 data_explore.py
 gcm_downscaling_*.py
 run_*.sh
-train.py
 train_*.py
 !train_100km_25km.py
 !train_25km_4km.py
+train.py
 __pycache__/dataread.cpython-39.pyc
 __pycache__/loss_torch.cpython-39.pyc
 __pycache__/scalers.cpython-39.pyc
@@ -42,4 +42,3 @@ slurm_output/slurm_70-output.txt
 __pycache__/scalers.cpython-38.pyc
 slurm_output/slurm_80-error.txt
 slurm_output/slurm_80-output.txt
-train_50_*.py
