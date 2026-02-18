@@ -1,12 +1,15 @@
 import numpy as np
 import pickle
+import os
 from pathlib import Path
+
+base_dir = Path(os.environ.get("SRGAN_BASE_DIR", Path(__file__).resolve().parent))
 
 # --------------------------------------------------
 # Load scaler
 # --------------------------------------------------
 with open(
-    '/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr/models/dy_v0.4/scaler.pkl',
+    base_dir / 'models' / 'dy_v0.4' / 'scaler.pkl',
     'rb'
 ) as f:
     scaler = pickle.load(f)
@@ -14,9 +17,7 @@ with open(
 # --------------------------------------------------
 # Lazy-load scaled predictions
 # --------------------------------------------------
-scaled_path = Path(
-    '/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr/gcm_ds/0.1/pr/ACCESS-CM2/y_pred_4_scaled.npy'
-)
+scaled_path = base_dir / 'gcm_ds' / '0.1' / 'pr' / 'ACCESS-CM2' / 'y_pred_4_scaled.npy'
 
 out = np.load(scaled_path, mmap_mode='r')  # 🚨 lazy
 print(f"[INFO] Loaded scaled file lazily: shape={out.shape}, dtype={out.dtype}")

@@ -14,14 +14,11 @@ This repository contains scripts to:
 
 ### Train Daily
 - `train_daily_frontier_srun.py`
-- `train_daily_frontier_srun_2nd.py`
-- `train_daily_frontier_srun_tmax.py`
-- `train_daily_frontier_srun_tmin.py`
+- `train_daily_frontier_srun_step2.py`: 0.25° → 0.0416° (second step).
 - `srgan_srun.sh`: Frontier SLURM launcher example for daily training.
 
 ### GCM Downscaling
-- `gcm_downscaling_tmax.py`: 100 km → 25 km → 4 km downscaling workflow (also used for `tmin` in current script loop).
-- `gcm_downscaling_prcp.py`: precipitation downscaling workflow.
+- `gcm_downscaling.py`: final 100 km → 25 km → 4 km downscaling workflow.
 - `gcm_downscaling_srun.sh`: SLURM launcher for downscaling.
 - `gcm_downscling_scale.py`: utility script for inverse-scaling a saved downscaling array.
 
@@ -39,8 +36,10 @@ For a selected `--version`, the script writes:
 
 ### Run directly
 ```bash
+export SRGAN_BASE_DIR=/path/to/SRGAN_batch_loading
+
 python -u prepare_daymet.py \
-  --base-dir /lustre/orion/proj-shared/cli138/7hn/SRGAN_batch_loading \
+  --base-dir ${SRGAN_BASE_DIR} \
   --version dy_v0.8 \
   --var tmin \
   --year-start 1980 \
@@ -68,13 +67,15 @@ Daily training expects prepared arrays under `output/<version>/` and scaler/mode
 
 ### Run directly (single node / manual launch)
 ```bash
-python3 -u train_daily_frontier_srun_2nd.py \
+export SRGAN_BASE_DIR=/path/to/SRGAN_batch_loading
+
+python3 -u train_daily_frontier_srun_step2.py \
   --master_addr <MASTER_ADDR> \
   --master_port 3442 \
   --mode train \
   --batch-size 4 \
   --version dy_v0.8 \
-  --base-dir /lustre/orion/proj-shared/cli138/7hn/SRGAN_batch_loading \
+  --base-dir ${SRGAN_BASE_DIR} \
   --var tmax \
   --w1-fn1 1e-5 \
   --w2-fn2 1e3
@@ -98,11 +99,11 @@ sbatch srgan_srun.sh
 This stage applies trained daily SRGAN generators to bias-corrected GCM inputs and writes predictions under `gcm_ds/<downscale_version>/<var>/<gcm>/`.
 
 ### Main script
-Use `gcm_downscaling_tmax.py` (this is the current entrypoint used by `gcm_downscaling_srun.sh`).
+Use `gcm_downscaling.py` (this is the current entrypoint used by `gcm_downscaling_srun.sh`).
 
 ### Run directly
 ```bash
-python -u gcm_downscaling_tmax.py
+python -u gcm_downscaling.py
 ```
 
 ### Run with SLURM
@@ -116,11 +117,11 @@ sbatch gcm_downscaling_srun.sh
 - `y_pred_4.npy` (or `y_pred_4_test.npy` depending on script branch)
 
 ### Important
-- `gcm_downscaling_tmax.py` currently sets variable list, GCM list, scenario, and model versions inside `__main__` (no CLI args yet), so edit those values in the script before submitting jobs.
+- `gcm_downscaling.py` currently sets variable list, GCM list, scenario, and model versions inside `__main__` (no CLI args yet), so edit those values in the script before submitting jobs.
 
 ---
 
 ## Notes
-- Update paths in scripts if your data location differs (some scripts may still reference `/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr`).
+- Set `SRGAN_BASE_DIR` to your repo root to avoid editing hardcoded paths.
 - Keep `--version` consistent between `prepare_daymet.py` and training scripts.
 - Common variables are `tmax`, `tmin`, and precipitation (`prcp` in data-prep scripts).

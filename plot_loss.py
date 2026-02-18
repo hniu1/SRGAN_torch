@@ -3,8 +3,9 @@ import os
 import json
 
 version = 'dy_v0.1'  # Replace with actual version
-checkpoint_dir = f'/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr/models/{version}'  # Replace with actual path
-path_output = f'/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr/output/{version}'  # Replace with actual path
+base_dir = os.environ.get("SRGAN_BASE_DIR", os.path.dirname(os.path.abspath(__file__)))
+checkpoint_dir = f'{base_dir}/models/{version}'  # Replace with actual path
+path_output = f'{base_dir}/output/{version}'  # Replace with actual path
 
 # load loss data from json
 with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'r') as f:

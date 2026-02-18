@@ -19,7 +19,7 @@ from dataread_mem import daymetread       # adjust import if needed
 # ------------------------------------------------------------
 def build_parser():
     p = argparse.ArgumentParser("Prepare Daymet data (single-rank)")
-    p.add_argument("--base-dir", default='/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr', help="Project base directory")
+    p.add_argument("--base-dir", default=os.environ.get("SRGAN_BASE_DIR", str(Path(__file__).resolve().parent)), help="Project base directory")
     p.add_argument("--version", default='dy_v0.5', help="Experiment version")
     p.add_argument("--var", default='tmax', help="Variable name (e.g., prcp, tmax)")
     p.add_argument("--year-start", type=int, default=1980)

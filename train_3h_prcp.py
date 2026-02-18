@@ -54,7 +54,7 @@ var = 'prcp'
 w1_fn1=1e-4
 w2_fn2=1e4
 
-base_dir = '/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr'
+base_dir = os.environ.get("SRGAN_BASE_DIR", os.path.dirname(os.path.abspath(__file__)))
 checkpoint_dir = f"{base_dir}/models/{version}"
 path_output = f'{base_dir}/output/{version}'
 # Create directories if they don't exist

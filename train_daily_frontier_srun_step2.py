@@ -17,21 +17,23 @@ from torch.utils.data import Dataset, DataLoader, DistributedSampler
 import matplotlib.pyplot as plt
 
 # ---- Project-local modules (must be importable) ----
-from srgan_torch import SRGAN_g_lr_26, SRGAN_d_lr_odd
-from dataread import read_saved_data
+from srgan_torch import SRGAN_g_hr_26_64RB, SRGAN_d_hr_gap
+from dataread_mem import read_saved_data
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
 # ============================== CLI ARGS ===============================
+
+DEFAULT_BASE_DIR = os.environ.get("SRGAN_BASE_DIR", os.path.dirname(os.path.abspath(__file__)))
 
 def build_parser():
     p = argparse.ArgumentParser(description="Frontier ROCm SRGAN (DDP)")
     p.add_argument('--mode', type=str, default='train', choices=['train', 'eval'])
     p.add_argument('--batch-size', type=int, default=128, help='Per-GPU batch size')
     p.add_argument('--amp', action='store_true', help='Enable bfloat16 autocast (MI250X)')
-    p.add_argument('--version', type=str, default='dy_v0.1', help='Run/version tag for outputs')
+    p.add_argument('--version', type=str, required=True, help='Run/version tag for outputs')
     p.add_argument("--year-start", type=int, default=1980)
     p.add_argument("--year-end", type=int, default=2014)
-    p.add_argument('--base-dir', type=str, default='/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr')
+    p.add_argument('--base-dir', type=str, default=DEFAULT_BASE_DIR)
     p.add_argument('--initial-training', action='store_true', help='Run the pretrain/init phase')
     p.add_argument('--read-raw', action='store_true', help='Regenerate data via daymetread()')
     p.add_argument('--var', type=str, default='temp')
@@ -41,8 +43,8 @@ def build_parser():
     p.add_argument('--n-epoch', type=int, default=100)
 
     # Loss weights
-    p.add_argument('--w1-fn1', type=float, default=1e-4)
-    p.add_argument('--w2-fn2', type=float, default=1e4)
+    p.add_argument('--w1-fn1', type=float, default=1e-3)
+    p.add_argument('--w2-fn2', type=float, default=1e5)
 
     # Dataloader workers (defaults tuned for Frontier example)
     p.add_argument('--num-workers', type=int, default=7)
@@ -128,58 +130,83 @@ def report_topology(args, device, local_rank):
     print(f"  └─ Master address : {args.master_addr}:{args.master_port}\n", flush=True)
 
 
+# ============================== DATASET ================================
+class DaymetLazyDataset(Dataset):
+    def __init__(
+        self,
+        path_output,
+        scaler,
+        split="train",
+        elevation=False,
+        elevation_hr=False,
+    ):
+        assert split in ("train", "test")
 
+        # Unscaled data on disk
+        print(f"[DaymetLazyDataset] Loading {split} data from {path_output}...", flush=True)
+        self.x = np.load(f"{path_output}/x_{split}.npy", mmap_mode="r")
+        self.y = np.load(f"{path_output}/y_{split}.npy", mmap_mode="r")
 
-class TrainData(Dataset):
-    def __init__(self, lr_data, hr_data):
-        self.lr_data = lr_data
-        self.hr_data = hr_data
+        self.scaler = scaler
+        self.elevation = elevation
+        self.elevation_hr = elevation_hr
 
-    def __getitem__(self, index):
-        lr_img = self.lr_data[index]
-        hr_img = self.hr_data[index]
-        lr = torch.tensor(lr_img, dtype=torch.float32).permute(2, 0, 1)  # NCHW
-        hr = torch.tensor(hr_img, dtype=torch.float32).permute(2, 0, 1)
+        if elevation:
+            self.elev_lr = np.load(
+                f"{path_output}/elev_lr_scaled.npy", mmap_mode="r"
+            )
+        else:
+            self.elev_lr = None
 
-        return lr, hr
+        if elevation_hr:
+            self.elev_hr = np.load(
+                f"{path_output}/elev_hr_scaled.npy", mmap_mode="r"
+            )
+        else:
+            self.elev_hr = None
 
     def __len__(self):
-        return len(self.hr_data)
+        return self.x.shape[0]
+
+    def _scale(self, arr):
+        # arr: (H, W)
+        flat = arr.reshape(-1, 1)
+        scaled = self.scaler.transform(flat)
+        return scaled.reshape(arr.shape).astype(np.float32, copy=False)
+
+    def __getitem__(self, idx):
+        # --- LR ---
+        x = self._scale(self.x[idx])  # (H_lr, W_lr)
+        x = x[None, :, :]              # (1, H_lr, W_lr)
+
+        if self.elevation:
+            elev = self.elev_lr[idx, :, :, 0]  # already scaled
+            elev = elev[None, :, :]
+            x = np.concatenate([x, elev], axis=0)
+
+        # --- HR ---
+        y = self._scale(self.y[idx])  # (H_hr, W_hr)
+        y = y[None, :, :]
+
+        if self.elevation_hr:
+            elev_hr = self.elev_hr[idx, :, :, 0]
+            elev_hr = elev_hr[None, :, :]
+            y = np.concatenate([y, elev_hr], axis=0)
+
+        return (
+            torch.from_numpy(x),
+            torch.from_numpy(y),
+        )
 
 
 # ============================== TRAINING ===============================
 
-def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, train_hr, G, D):
-    # Dataloader
-    dataset = TrainData(train_lr, train_hr)
-    if is_dist():
-        sampler = DistributedSampler(dataset, num_replicas=get_world_size(), rank=get_rank(),
-                                     shuffle=True, drop_last=True)
-    else:
-        sampler = None
-
-    if get_rank() == 0:
-        print(f"Using {args.num_workers} data loader workers per GPU")
-
-    num_workers = 0  # ⚠️ force single-threaded load to prevent ROCm hang
-    loader = DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        shuffle=(sampler is None),
-        sampler=sampler,
-        drop_last=True,
-        num_workers=num_workers,
-        pin_memory=False,          # ROCm prefers this off unless tested
-        persistent_workers=False   # must be off if num_workers=0
-    )
-
-    if get_rank() == 0:
-        print(f"dataloader length: {len(loader)}")
+def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G, D):
 
     # Optimizers / schedulers
-    g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
-    g_optimizer      = optim.Adam(G.parameters(), lr=1e-4)
-    d_optimizer      = optim.Adam(D.parameters(), lr=1e-4)
+    g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4, betas=(0.9, 0.999))
+    g_optimizer      = optim.Adam(G.parameters(), lr=1e-4, betas=(0.9, 0.999))
+    d_optimizer      = optim.Adam(D.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
     g_lr_sched_init = torch.optim.lr_scheduler.StepLR(g_optimizer_init, step_size=25, gamma=0.5)
     g_lr_sched      = torch.optim.lr_scheduler.StepLR(g_optimizer,      step_size=50, gamma=0.8)
@@ -195,9 +222,9 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
     # net_with_loss_G    = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content,
     #                                 loss_fn3=criterion_absolute, w1_fn1=args.w1_fn1, w2_fn2=args.w2_fn2)
     net_with_loss_D = WithLoss_D(
-        D_net=D,
-        loss_fn=criterion_gan
-    )
+            D_net=D,
+            loss_fn=criterion_gan
+        )
 
     net_with_loss_G = WithLoss_G(
         D_net=D,
@@ -207,10 +234,11 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
         w_gan=args.w1_fn1,
         w_content=args.w2_fn2
     )
-
     g_init_losses, g_losses, d_losses = [], [], []
-    autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if args.amp else nullcontext()
-
+    autocast_ctx = (
+        torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+        if args.amp else nullcontext()
+    )
     ###################################################################
     # ---- Initial training (optional) --------------------------------------
     ###################################################################
@@ -347,7 +375,6 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
         else:
             train_G_flag = 0
             train_D_flag = 0
-
         if is_dist():
             flags = torch.tensor([train_G_flag, train_D_flag], device=device, dtype=torch.int32)
             dist.broadcast(flags, src=0)
@@ -407,6 +434,7 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
                     d_loss_val = net_with_loss_D(hr_patch, fake_d)
 
 
+
             # ===========================================================
             # 3️⃣  Logging
             # ===========================================================
@@ -438,12 +466,6 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
                 print(f"[adv] no improvement {wait_adv}/{no_improve_adv}", flush=True)
 
             print(f"[Epoch {epoch+1}/{args.n_epoch}] G_loss={g_avg:.4f}, D_loss={d_avg:.4f}, best_g_loss={best_g_loss:.4f}", flush=True)
-
-        # save average loss history (rank 0)
-        if get_rank() == 0:
-            loss_data = {'g_init_losses': g_init_losses, 'g_losses': g_losses, 'd_losses': d_losses}
-            with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'w') as f:
-                json.dump(loss_data, f, indent=2)
 
         # Early stop decision (rank 0)
         stop_training = torch.tensor(0, device=device)
@@ -488,14 +510,33 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
 # ============================== EVALUATION ==============================
 
 @torch.no_grad()
-def evaluate_loop(args, device, checkpoint_dir, path_output, test_lr, loaded_scaler, G, elevation_hr=False):
+def evaluate_loop(
+    args,
+    device,
+    local_rank,
+    checkpoint_dir,
+    path_output,
+    test_lr,
+    loaded_scaler,
+    bsz,
+    G,
+    elevation_hr=False,
+):    
     """
-    Single-GPU evaluation loop.
+    Rank-0-only evaluation loop.
     Loads generator weights and performs full prediction on test set.
     """
+    # --------------------------------------------------
+    # Rank guard
+    # --------------------------------------------------
+    if torch.distributed.is_initialized() and local_rank != 0:
+        return
+
     g_adv_path = os.path.join(checkpoint_dir, 'g.pth')
     g_init_path = os.path.join(checkpoint_dir, 'g_init.pth')
     G_load = (G.module if isinstance(G, nn.parallel.DistributedDataParallel) else G)
+    G_load.to(device)
+    G_load.eval()
 
     # # Predict with initial model if available
     # if os.path.exists(g_init_path):
@@ -508,21 +549,45 @@ def evaluate_loop(args, device, checkpoint_dir, path_output, test_lr, loaded_sca
 
     # Predict with adversarially trained model if available
     if os.path.exists(g_adv_path):
-        print("[Eval] Using g.pth for adversarial prediction...")
-        G_load.load_state_dict(torch.load(g_adv_path, map_location=device))
-        G.eval()
-        run_prediction(G, test_lr, loaded_scaler, path_output, 'y_pred.npy', device, elevation_hr)
+        print("[Eval] Using g.pth for adversarial prediction...", flush=True)
+        state = torch.load(g_adv_path, map_location=device)
+        G_load.load_state_dict(state, strict=True)
+
+        run_prediction(
+            G_load,
+            test_lr,
+            loaded_scaler,
+            path_output,
+            out_name="y_pred.npy",
+            device=device,
+            bsz=bsz,
+            elevation_hr=elevation_hr,
+        )
     else:
-        print("[Eval] g.pth not found, skipping...")
+        print("[Eval] g.pth not found, skipping evaluation.", flush=True)
 
-
-def run_prediction(G, test_lr, scaler, path_output, out_name, device, elevation_hr):
+@torch.no_grad()
+def run_prediction(
+    G,
+    test_lr,
+    scaler,
+    path_output,
+    out_name,
+    device,
+    bsz,
+    elevation_hr=False,
+):
     """
-    Run inference on the full test set (single GPU) and save results.
+    Run inference on the full test set and save results.
     """
-    valid = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(device)
+    # Ensure input tensor layout: NHWC → NCHW
+    valid = (
+        torch.as_tensor(test_lr, dtype=torch.float32)
+        .permute(0, 3, 1, 2)
+        .contiguous()
+        .to(device)
+    )
 
-    bsz = 64
     outs = []
     for i in range(0, len(valid), bsz):
         out = G(valid[i:i+bsz]).cpu().numpy()
@@ -531,12 +596,16 @@ def run_prediction(G, test_lr, scaler, path_output, out_name, device, elevation_
 
     if elevation_hr:
         out = out[:, :, :, 0]
-    out = out.transpose(0, 2, 3, 1)  # NCHW → NHWC
+    # NCHW → NHWC
+    out = out.transpose(0, 2, 3, 1)
+    
+    t, h, w, c = out.shape
+    out_flat = out.reshape(-1, c)
+    yinv = scaler.inverse_transform(out_flat).reshape(t, h, w, c)
+    if c == 1:
+        yinv = yinv[..., 0]
 
-    tt, nhr1, nhr2 = out.shape[0], out.shape[1], out.shape[2]
-    yinv = scaler.inverse_transform(out.reshape(-1, out.shape[3]))
-    yinv = yinv.reshape(tt, nhr1, nhr2) if yinv.ndim == 2 and yinv.shape[1] == 1 else yinv
-    yinv = np.maximum(yinv, 0)
+    yinv = np.maximum(yinv, 0.0)
 
     save_path = os.path.join(path_output, out_name)
     np.save(save_path, yinv)
@@ -554,17 +623,7 @@ def main():
     world_size = comm.Get_size()
     rank = comm.Get_rank()
 
-    # # Each Slurm task has one GPU, and SLURM_LOCALID maps to that GPU.
-    # local_rank = int(os.environ.get("SLURM_LOCALID", 0))
     local_rank = int(rank) % int(num_gpus_per_node) # local_rank and device are 0 when using 1 GPU per task
-    # local_rank = int(os.environ.get("SLURM_LOCALID", int(rank) % int(num_gpus_per_node)))
-    # os.environ["HIP_VISIBLE_DEVICES"] = str(local_rank)
-
-    # # Frontier: exactly one GPU visible per rank
-    # local_rank = 0
-    # torch.cuda.set_device(0)
-    # device = torch.device("cuda:0")
-
 
     # Export for PyTorch DDP
     os.environ["WORLD_SIZE"] = str(world_size)
@@ -572,11 +631,6 @@ def main():
     os.environ["LOCAL_RANK"] = str(local_rank)
     os.environ["MASTER_ADDR"] = str(args.master_addr)
     os.environ["MASTER_PORT"] = str(args.master_port)
-    # os.environ["NCCL_SOCKET_IFNAME"] = "hsn0"
-
-    # Report what this process sees
-    # torch.cuda.set_device(0)   # since only 1 GPU is visible now
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     torch.cuda.set_device(local_rank)   # ✅ correct
     device = torch.device(f"cuda:{local_rank}")
@@ -621,41 +675,59 @@ def main():
     elevation = True
     elevation_hr = False
 
-    # Normal cached-data path
-    with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
-        loaded_scaler = pickle.load(f)
-    try:
-        train_lr = read_saved_data("x_train", path_output, loaded_scaler)
-        test_lr  = read_saved_data("x_test",  path_output, loaded_scaler)
-        train_hr = read_saved_data("y_train", path_output, loaded_scaler)
-        test_hr  = read_saved_data("y_test",  path_output, loaded_scaler)
-    except FileNotFoundError as e:
-        if rank == 0:
-            print("Error loading cached data:", e)
-        raise
-
-    # Optional: attach elevation channels
-    if elevation:
-        elev_lr = np.load(f'{path_output}/elev_lr_scaled.npy')
-        train_lr = np.concatenate((train_lr, elev_lr[:train_lr.shape[0]]), axis=3)
-        test_lr  = np.concatenate((test_lr,  elev_lr[:test_lr.shape[0]]),  axis=3)
-        if elevation_hr:
-            elev_hr = np.load(f'{path_output}/elev_hr_scaled.npy')
-            train_hr = np.concatenate((train_hr, elev_hr[:train_hr.shape[0]]), axis=3)
-            test_hr  = np.concatenate((test_hr,  elev_hr[:test_hr.shape[0]]),  axis=3)
-
-    #print train/test shapes
     if rank == 0:
-        print(f"train_lr shape: {train_lr.shape}")
-        print(f"test_lr shape:  {test_lr.shape}")
-        print(f"train_hr shape: {train_hr.shape}")
-        print(f"test_hr shape:  {test_hr.shape}")
+        print(f"[Rank {rank}] Loading scaler...", flush=True)
+
+    with open(f"{checkpoint_dir}/scaler.pkl", "rb") as f:
+        loaded_scaler = pickle.load(f)
+
+    # --------------------------------------------------
+    # Lazy Dataset + DataLoader
+    # --------------------------------------------------
+    # Train or Eval
+    if args.mode == 'train':
+        train_dataset = DaymetLazyDataset(
+            path_output=path_output,
+            scaler=loaded_scaler,
+            split="train",
+            elevation=elevation,
+            elevation_hr=elevation_hr,
+        )
+
+        if is_dist():
+            train_sampler = DistributedSampler(
+                train_dataset,
+                shuffle=True,
+                drop_last=True,
+            )
+        else:
+            train_sampler = None
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=args.batch_size,   # start with 1 or 2
+            sampler=train_sampler,
+            shuffle=(train_sampler is None),
+            num_workers=4,                # 2–4 max on Frontier
+            pin_memory=False,             # IMPORTANT
+            persistent_workers=False,
+        )
+
+        if get_rank() == 0:
+            print(f"[Train] dataloader length: {len(train_loader)}", flush=True)
+            print(
+                f"[Train] batch_size={args.batch_size}, "
+                f"num_workers={train_loader.num_workers}",
+                flush=True,
+            )
+        
     # Models
     in_channels = 2 if elevation else 1
-    G = SRGAN_g_lr_26(in_channels=in_channels).to(device)
-    # D = SRGAN_d_lr_odd(hr_size=train_hr[0].shape[0] * train_hr[0].shape[1]).to(device)
-    hr_shape = (train_hr[0].shape[0], train_hr[0].shape[1])
-    D = SRGAN_d_lr_odd(hr_size=hr_shape).to(device)
+    G = SRGAN_g_hr_26_64RB(in_channels=in_channels).to(device)
+    # hr_shape = (train_hr[0].shape[0], train_hr[0].shape[1])
+    # Train or Eval
+    if args.mode == 'train':
+        D = SRGAN_d_hr_gap().to(device)
 
 
     if is_dist():
@@ -663,24 +735,37 @@ def main():
             G, device_ids=[local_rank],
             find_unused_parameters=True
         )
-        D = nn.parallel.DistributedDataParallel(
-            D, device_ids=[local_rank],
-            find_unused_parameters=True
-        )
+        # Train or Eval
+        if args.mode == 'train':
+            D = nn.parallel.DistributedDataParallel(
+                D, device_ids=[local_rank],
+                find_unused_parameters=True
+            )
 
     # Train or Eval
     if args.mode == 'train':
         train_loop(
-            args=args, device=device, local_rank=local_rank,
-            checkpoint_dir=checkpoint_dir, path_output=path_output,
-            train_lr=train_lr, train_hr=train_hr,
-            G=G, D=D
+            args=args,
+            device=device,
+            local_rank=local_rank,
+            checkpoint_dir=checkpoint_dir,
+            path_output=path_output,
+            loader=train_loader,
+            G=G,
+            D=D
         )
     else:
+        test_lr  = read_saved_data("x_test",  path_output, loaded_scaler)
+        if elevation:
+            elev_lr = np.load(f'{path_output}/elev_lr_scaled.npy')
+            test_lr  = np.concatenate((test_lr,  elev_lr[:test_lr.shape[0]]),  axis=3)
+        if rank == 0:
+            print(f"[Eval] test_lr shape: {test_lr.shape}", flush=True)
         evaluate_loop(
             args=args, device=device, local_rank=local_rank,
             checkpoint_dir=checkpoint_dir, path_output=path_output,
             test_lr=test_lr, loaded_scaler=loaded_scaler,
+            bsz=2,
             G=G, elevation_hr=elevation_hr
         )
     

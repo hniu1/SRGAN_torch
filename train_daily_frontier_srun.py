@@ -23,6 +23,8 @@ from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
 # ============================== CLI ARGS ===============================
 
+DEFAULT_BASE_DIR = os.environ.get("SRGAN_BASE_DIR", os.path.dirname(os.path.abspath(__file__)))
+
 def build_parser():
     p = argparse.ArgumentParser(description="Frontier ROCm SRGAN (DDP)")
     p.add_argument('--mode', type=str, default='train', choices=['train', 'eval'])
@@ -31,7 +33,7 @@ def build_parser():
     p.add_argument('--version', type=str, default='dy_v0.1', help='Run/version tag for outputs')
     p.add_argument("--year-start", type=int, default=1980)
     p.add_argument("--year-end", type=int, default=2014)
-    p.add_argument('--base-dir', type=str, default='/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr')
+    p.add_argument('--base-dir', type=str, default=DEFAULT_BASE_DIR)
     p.add_argument('--initial-training', action='store_true', help='Run the pretrain/init phase')
     p.add_argument('--read-raw', action='store_true', help='Regenerate data via daymetread()')
     p.add_argument('--var', type=str, default='temp')

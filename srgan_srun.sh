@@ -18,6 +18,8 @@ module load miniforge3/23.11.0-0
 
 conda activate /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm
 
+BASE_DIR=${SRGAN_BASE_DIR:-$PWD}
+
 export NCCL_SOCKET_IFNAME=hsn0
 export GLOO_SOCKET_IFNAME=hsn0
 # export NCCL_DEBUG=INFO
@@ -34,13 +36,13 @@ mkdir -p ${MIOPEN_USER_DB_PATH}
 
 
 srun \
-  python3 -u train_daily_frontier_srun_2nd.py \
+  python3 -u train_daily_frontier_srun_step2.py \
     --master_addr=$MASTER_ADDR \
     --master_port=3442 \
     --mode train \
     --batch-size 4 \
     --version dy_v0.6 \
-    --base-dir /lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr \
+    --base-dir ${BASE_DIR} \
     --var tmax \
     --w1-fn1 1e-5 \
     --w2-fn2 1e3 
