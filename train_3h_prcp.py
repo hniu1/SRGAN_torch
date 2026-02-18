@@ -1,7 +1,4 @@
 import os
-# Set CUDA device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
-
 import time
 import numpy as np
 import torch
@@ -14,39 +11,52 @@ import json
 import pickle
 import argparse
 from sklearn.preprocessing import StandardScaler
-from srgan_torch import SRGAN_g_hr_26_64RB, SRGAN_d_hr_odd
+from srgan_torch import SRGAN_g, SRGAN_d, SRGAN_g_lr, SRGAN_d_lr, SRGAN_g_lr_26, SRGAN_g_lr_smallFeature, SRGAN_d_lr_large, SRGAN_d_lr_odd_3h
 from dataread import daymetread
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 
+torch.backends.cudnn.enabled = False
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
+torch.backends.cuda.matmul.allow_tf32 = False  # reduce algo surprises
+
+# torch.backends.cudnn.enabled = True
+# torch.backends.cudnn.benchmark = True
+# torch.backends.cudnn.deterministic = False
+# torch.backends.cuda.matmul.allow_tf32 = True
 
 # Argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', type=str, default='train', help='train, eval')
 args = parser.parse_args()
 
-
-
 # Check if CUDA is available and set the device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# if torch.cuda.is_available():
+#     torch.backends.cudnn.benchmark = True
 print(f"Using device: {device}")
+print("Visible GPUs:", torch.cuda.device_count(), os.getenv("CUDA_VISIBLE_DEVICES"))
 
 
 ###====================== HYPER-PARAMETERS ===========================###
-batch_size = 8
+batch_size = 16
 n_epoch_init = 50
-n_epoch = 100
+n_epoch = 400
 # create folders to save result images and trained models
-version = 'v5.4' # check the version.txt file for historical versions under output directory
+version = '3h_v0.3_prcp' # check the version.txt file for historical versions under output directory
 save_dir = "samples"
 elevation = True
 elevation_hr = False
-initial_training = False
+initial_training = True
 readrawdata  = False
-w1_fn1 = 1e-4
-w2_fn2 = 1e5
+var = 'prcp'
+# high_deg = 1 # 25 to 4km
+w1_fn1=1e-4
+w2_fn2=1e4
 
-checkpoint_dir = f"models/{version}"
-path_output = f'./output/{version}'
+base_dir = '/lustre/orion/proj-shared/cli138/7hn/SRGAN_3hr'
+checkpoint_dir = f"{base_dir}/models/{version}"
+path_output = f'{base_dir}/output/{version}'
 # Create directories if they don't exist
 os.makedirs(checkpoint_dir, exist_ok=True)
 os.makedirs(path_output, exist_ok=True)
@@ -63,7 +73,7 @@ def ReadSavedData(name, loaded_scaler):
 ###====================== DATA READING ===========================###
 # train_lr, test_lr, train_hr, test_hr = climateread()
 if args.mode == 'train' and readrawdata:
-    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=True, scaler = 'minmax')
+    train_lr, test_lr, train_hr, test_hr = daymetread(path_output, checkpoint_dir, elevation, elevation_hr, Daymet_ERA5=True, high_deg=False, scaler = 'log', var = var)
     # Load the scaler
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
@@ -92,24 +102,24 @@ class TrainData(Dataset):
     def __getitem__(self, index):
         lr_img = self.lr_data[index]
         hr_img = self.hr_data[index]
-        return torch.tensor(lr_img, dtype=torch.float32).permute(2, 0, 1), torch.tensor(hr_img, dtype=torch.float32).permute(2, 0, 1)
+        return torch.tensor(lr_img, dtype=torch.float32).permute(2, 0, 1).contiguous(), torch.tensor(hr_img, dtype=torch.float32).permute(2, 0, 1).contiguous()
 
     def __len__(self):
         return len(self.hr_data)
 
 # Initialize models
 if elevation:
-    G = SRGAN_g_hr_26_64RB(in_channels=2).to(device)
+    G = SRGAN_g_lr_26(in_channels=2).to(device)
 else:
-    G = SRGAN_g_hr_26_64RB(in_channels=1).to(device)
-D = SRGAN_d_hr_odd(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
+    G = SRGAN_g_lr_26(in_channels=1).to(device)
+D = SRGAN_d_lr_odd_3h(hr_size=train_hr[0].shape[0]*train_hr[0].shape[1]).to(device)
 # input_tensor = torch.randn(1, 1, 29, 60).to(device)
 # output = G(input_tensor)
 
 # Wrap models with DataParallel if using multiple GPUs
-if torch.cuda.device_count() >= 1:
-    G = nn.DataParallel(G)
-    D = nn.DataParallel(D)
+if torch.cuda.device_count() > 1:
+    G = G.to(device)
+    D = D.to(device)
 
 def train():
     G.train() # set the model in training mode
@@ -118,7 +128,15 @@ def train():
      # Create datasets
     train_dataset = TrainData(train_lr, train_hr)
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        drop_last=True,
+        num_workers= min(8, os.cpu_count() or 4),  # try 4–8
+        persistent_workers=True,   # <- change this
+        pin_memory=True            # keep this
+        )
 
     # Define optimizers
     g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
@@ -136,10 +154,21 @@ def train():
     criterion_absolute = nn.L1Loss().to(device)  # Absolute Difference Error
 
     # Define the loss functions for initial and adversarial training
-    net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
-    net_with_loss_D = WithLoss_D(D, G, criterion_gan)
-    net_with_loss_G = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content, loss_fn3=criterion_absolute, 
-                                 w1_fn1=w1_fn1, w2_fn2=w2_fn2)
+    net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute).to(device)
+    net_with_loss_D = WithLoss_D(D, G, criterion_gan).to(device)
+    net_with_loss_G = WithLoss_G(D, G, 
+                                 loss_fn1=criterion_gan, 
+                                 loss_fn2=criterion_content, 
+                                 loss_fn3=criterion_absolute, 
+                                 w1_fn1=w1_fn1, w2_fn2=w2_fn2).to(device)
+    
+    if torch.cuda.device_count() > 1:
+        net_with_loss_init = nn.DataParallel(net_with_loss_init, device_ids=list(range(torch.cuda.device_count())))
+        # net_with_loss_D    = nn.DataParallel(net_with_loss_D)
+        # net_with_loss_G    = nn.DataParallel(net_with_loss_G)
+        net_with_loss_G = nn.DataParallel(net_with_loss_G, device_ids=list(range(torch.cuda.device_count())))
+        net_with_loss_D = nn.DataParallel(net_with_loss_D, device_ids=list(range(torch.cuda.device_count())))
+    print("Using DP on device_ids:", net_with_loss_G.device_ids)
 
     g_init_losses = []
     g_losses = []
@@ -165,18 +194,23 @@ def train():
         for epoch in range(n_epoch_init):
             g_loss_sum = 0
             n_steps = 0
-            for lr_patch, hr_patch in train_loader:
-                lr_patch = lr_patch.to(device)
-                hr_patch = hr_patch.to(device)
+            for step, (lr_patch, hr_patch) in enumerate(train_loader):
+                lr_patch = lr_patch.to(device, non_blocking=True)
+                hr_patch = hr_patch.to(device, non_blocking=True)
 
                 # Train the generator
                 g_optimizer_init.zero_grad()
                 loss = net_with_loss_init(lr_patch, hr_patch)
+                loss = loss.mean()
                 loss.backward()
                 g_optimizer_init.step()
 
                 g_loss_sum += loss.item()
                 n_steps += 1
+
+                if step == 0:  # log right after first step so all GPUs show usage
+                    for i in range(torch.cuda.device_count()):
+                        print(f"GPU {i}: {torch.cuda.memory_allocated(i)/1e6:.1f} MB allocated")
 
             g_loss_avg = g_loss_sum / n_steps
             g_init_losses.append(g_loss_avg)
@@ -198,11 +232,12 @@ def train():
             if epochs_since_improvement_init >= no_improve_epochs_init:
                 print("Early stopping triggered during initial training.")
                 break
+            
 
     #################################################################################
     # Adversarial learning with Early stop
     #################################################################################
-    no_improve_epochs_adv = 100  # Number of epochs to wait before stopping if no improvement in adversarial phase
+    no_improve_epochs_adv = 20  # Number of epochs to wait before stopping if no improvement in adversarial phase
     min_delta_adv = 1e-8      # Minimum change to qualify as an improvement during adversarial phase
     best_g_loss_adv = float('inf')  # Track the best generator loss
     best_d_loss_adv = float('inf')  # Track the best discriminator loss
@@ -229,37 +264,46 @@ def train():
             hr_patch = hr_patch.to(device)
             if epoch > 0:
                 # Train Generator
-                if d_loss < 1.0:
+                if d_loss < 0.7 or loss_g > 0.1:
                     g_optimizer.zero_grad()
                     loss_g = net_with_loss_G(lr_patch, hr_patch)
+                    loss_g = loss_g.mean()
                     loss_g.backward()
                     g_optimizer.step()
                 else:
                     with torch.no_grad(): # monitor g loss without train
                         loss_g = net_with_loss_G(lr_patch, hr_patch)
+                        loss_g = loss_g.mean()
                 # Train Discriminator
-                if d_loss > 0.1:
+                if d_loss > 0.5:
                     d_optimizer.zero_grad()
                     loss_d = net_with_loss_D(lr_patch, hr_patch)
+                    loss_d = loss_d.mean()
                     loss_d.backward()
                     d_optimizer.step()
                 else:
                     with torch.no_grad(): # monitor d loss without train
                         loss_d = net_with_loss_D(lr_patch, hr_patch)
+                        loss_d = loss_d.mean()
             else:
                 # Train both Generator and Discriminator for the first epoch
                 d_optimizer.zero_grad()
                 g_optimizer.zero_grad()
                 loss_g = net_with_loss_G(lr_patch, hr_patch)
+                loss_g = loss_g.mean()
                 loss_g.backward()
                 g_optimizer.step()
                 loss_d = net_with_loss_D(lr_patch, hr_patch)
+                loss_d = loss_d.mean()
                 loss_d.backward()
                 d_optimizer.step()
 
             g_loss_sum += loss_g.item()
             d_loss_sum += loss_d.item()
             n_steps += 1
+            if step == 0:  # log right after first step so all GPUs show usage
+                for i in range(torch.cuda.device_count()):
+                    print(f"GPU {i}: {torch.cuda.memory_allocated(i)/1e6:.1f} MB allocated")
 
         g_loss = g_loss_sum / n_steps
         d_loss = d_loss_sum / n_steps
@@ -330,8 +374,8 @@ def evaluate():
     
     G.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'g_init.pth')))
     G.eval()
-    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2).to(device)  # Convert to PyTorch tensor and move to device
-    batch_size = 64  # Adjust batch size according to your GPU memory
+    valid_lr_img_tensor = torch.tensor(test_lr, dtype=torch.float32).permute(0, 3, 1, 2)  # Convert to PyTorch tensor and move to device
+    batch_size = 16  # Adjust batch size according to your GPU memory
     
     outputs = []
     with torch.no_grad():  # No gradient calculation for inference

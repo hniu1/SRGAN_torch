@@ -1,9 +1,7 @@
 import numpy as np
 #from netCDF4 import Dataset
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
 import os
-import seaborn as sns
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 
@@ -11,7 +9,9 @@ def read_data(path_output, var,exp):
     X_test = np.load(f'{path_output}/x_test.npy')
     y_test = np.load(f'{path_output}/y_test.npy')
     y_test_predict = np.load(f'{path_output}/y_pred.npy')
-    y_test_predict_init = np.load(f'{path_output}/y_pred_init.npy')
+    # y_test_predict_init = np.load(f'{path_output}/y_pred_init.npy')
+    # no init pred with empty numpy file
+    y_test_predict_init = np.load(f'{path_output}/y_pred_init.npy') if os.path.exists(f'{path_output}/y_pred_init.npy') else np.zeros_like(y_test)
     # valloss = np.load(f'./output/{res}/val_loss_{res}_daily_{exp}.npy')
     # trainloss = np.load(f'./output/{res}/train_loss_{res}_daily_{exp}.npy')
     return X_test,y_test,y_test_predict, y_test_predict_init
@@ -206,23 +206,19 @@ def main():
     plot_map(var,X_test,y_test,y_test_predict,y_test_predict_init,exp)
     plot_map(var,X_test,y_test,y_test_predict,y_test_predict_init,exp, '95th')
     plot_map(var,X_test,y_test,y_test_predict,y_test_predict_init,exp, '25th')
-    # plot_loss(var,val,train,exp)
-    # # plot_map(var,y_test,y_test_predict,exp)
-    plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp)
-    plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '95th')
-    plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '25th')
+    # # plot_loss(var,val,train,exp)
+    # # # plot_map(var,y_test,y_test_predict,exp)
+    # plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp)
+    # plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '95th')
+    # plot_diff(var,y_test,y_test_predict, y_test_predict_init,exp, '25th')
     # plot_diff_version(var,exp)
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    version = 'v7.7'
-=======
-    version = 'v7.2'
->>>>>>> 6e5375d (update clean repo)
+    version = 'dy_v0.4'
     version_diff = 'v0.1'
     
-    var = "tmax"
+    var = "prcp"
     path_output = f'./output/{version}'
     path_fig = f'./output/{version}/fig'
     os.makedirs(path_fig, exist_ok=True)
