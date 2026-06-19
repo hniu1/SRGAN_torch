@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from srgan_torch import SRGAN_g_lr_26, SRGAN_d_lr_odd
 from dataread import read_saved_data
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
+from patch_dataset import PatchDaymetDataset
 
 # ============================== CLI ARGS ===============================
 
@@ -48,6 +49,14 @@ def build_parser():
 
     # Dataloader workers (defaults tuned for Frontier example)
     p.add_argument('--num-workers', type=int, default=7)
+    p.add_argument('--patch-training', action='store_true',
+                   help='Train on random LR/HR spatial patches instead of full fields')
+    p.add_argument('--lr-patch-size', type=int, default=8,
+                   help='LR patch width/height in grid cells for patch training')
+    p.add_argument('--scale-factor', type=int, default=4,
+                   help='Spatial upscaling factor for paired HR patches')
+    p.add_argument('--patches-per-image', type=int, default=4,
+                   help='Number of random patches sampled per timestep each epoch')
 
     p.add_argument("--master_addr", type=str, required=True)
     p.add_argument("--master_port", type=str, required=True)
@@ -149,11 +158,7 @@ class TrainData(Dataset):
         return len(self.hr_data)
 
 
-# ============================== TRAINING ===============================
-
-def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, train_hr, G, D):
-    # Dataloader
-    dataset = TrainData(train_lr, train_hr)
+def build_train_loader(args, dataset):
     if is_dist():
         sampler = DistributedSampler(dataset, num_replicas=get_world_size(), rank=get_rank(),
                                      shuffle=True, drop_last=True)
@@ -163,7 +168,7 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
     if get_rank() == 0:
         print(f"Using {args.num_workers} data loader workers per GPU")
 
-    num_workers = 0  # ⚠️ force single-threaded load to prevent ROCm hang
+    num_workers = 0  # keep single-threaded load to prevent ROCm hangs seen on Frontier
     loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -171,13 +176,18 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, train_lr, 
         sampler=sampler,
         drop_last=True,
         num_workers=num_workers,
-        pin_memory=False,          # ROCm prefers this off unless tested
-        persistent_workers=False   # must be off if num_workers=0
+        pin_memory=False,
+        persistent_workers=False,
     )
 
     if get_rank() == 0:
         print(f"dataloader length: {len(loader)}")
+    return loader
 
+
+# ============================== TRAINING ===============================
+
+def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G, D):
     # Optimizers / schedulers
     g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
     g_optimizer      = optim.Adam(G.parameters(), lr=1e-4)
@@ -616,37 +626,64 @@ def main():
     # Normal cached-data path
     with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
-    try:
-        train_lr = read_saved_data("x_train", path_output, loaded_scaler)
-        test_lr  = read_saved_data("x_test",  path_output, loaded_scaler)
-        train_hr = read_saved_data("y_train", path_output, loaded_scaler)
-        test_hr  = read_saved_data("y_test",  path_output, loaded_scaler)
-    except FileNotFoundError as e:
+
+    train_loader = None
+    test_lr = None
+    if args.mode == "train" and args.patch_training:
+        train_dataset = PatchDaymetDataset(
+            path_output=path_output,
+            scaler=loaded_scaler,
+            split="train",
+            lr_patch_size=args.lr_patch_size,
+            scale_factor=args.scale_factor,
+            patches_per_image=args.patches_per_image,
+            elevation=elevation,
+            elevation_hr=elevation_hr,
+            random_patches=True,
+        )
+        train_loader = build_train_loader(args, train_dataset)
+        hr_shape = train_dataset.hr_patch_shape
         if rank == 0:
-            print("Error loading cached data:", e)
-        raise
+            print("[Patch training enabled]")
+            print(f"LR field shape: {train_dataset.lr_shape}")
+            print(f"HR field shape: {train_dataset.hr_shape}")
+            print(f"LR patch shape: {train_dataset.lr_patch_shape}")
+            print(f"HR patch shape: {train_dataset.hr_patch_shape}")
+            print(f"Patches per timestep: {args.patches_per_image}")
+    else:
+        try:
+            train_lr = read_saved_data("x_train", path_output, loaded_scaler)
+            test_lr  = read_saved_data("x_test",  path_output, loaded_scaler)
+            train_hr = read_saved_data("y_train", path_output, loaded_scaler)
+            test_hr  = read_saved_data("y_test",  path_output, loaded_scaler)
+        except FileNotFoundError as e:
+            if rank == 0:
+                print("Error loading cached data:", e)
+            raise
 
-    # Optional: attach elevation channels
-    if elevation:
-        elev_lr = np.load(f'{path_output}/elev_lr_scaled.npy')
-        train_lr = np.concatenate((train_lr, elev_lr[:train_lr.shape[0]]), axis=3)
-        test_lr  = np.concatenate((test_lr,  elev_lr[:test_lr.shape[0]]),  axis=3)
-        if elevation_hr:
-            elev_hr = np.load(f'{path_output}/elev_hr_scaled.npy')
-            train_hr = np.concatenate((train_hr, elev_hr[:train_hr.shape[0]]), axis=3)
-            test_hr  = np.concatenate((test_hr,  elev_hr[:test_hr.shape[0]]),  axis=3)
+        # Optional: attach elevation channels
+        if elevation:
+            elev_lr = np.load(f'{path_output}/elev_lr_scaled.npy')
+            train_lr = np.concatenate((train_lr, elev_lr[:train_lr.shape[0]]), axis=3)
+            test_lr  = np.concatenate((test_lr,  elev_lr[:test_lr.shape[0]]),  axis=3)
+            if elevation_hr:
+                elev_hr = np.load(f'{path_output}/elev_hr_scaled.npy')
+                train_hr = np.concatenate((train_hr, elev_hr[:train_hr.shape[0]]), axis=3)
+                test_hr  = np.concatenate((test_hr,  elev_hr[:test_hr.shape[0]]),  axis=3)
 
-    #print train/test shapes
-    if rank == 0:
-        print(f"train_lr shape: {train_lr.shape}")
-        print(f"test_lr shape:  {test_lr.shape}")
-        print(f"train_hr shape: {train_hr.shape}")
-        print(f"test_hr shape:  {test_hr.shape}")
+        #print train/test shapes
+        if rank == 0:
+            print(f"train_lr shape: {train_lr.shape}")
+            print(f"test_lr shape:  {test_lr.shape}")
+            print(f"train_hr shape: {train_hr.shape}")
+            print(f"test_hr shape:  {test_hr.shape}")
+        hr_shape = (train_hr[0].shape[0], train_hr[0].shape[1])
+        if args.mode == "train":
+            train_loader = build_train_loader(args, TrainData(train_lr, train_hr))
+
     # Models
     in_channels = 2 if elevation else 1
     G = SRGAN_g_lr_26(in_channels=in_channels).to(device)
-    # D = SRGAN_d_lr_odd(hr_size=train_hr[0].shape[0] * train_hr[0].shape[1]).to(device)
-    hr_shape = (train_hr[0].shape[0], train_hr[0].shape[1])
     D = SRGAN_d_lr_odd(hr_size=hr_shape).to(device)
 
 
@@ -665,8 +702,7 @@ def main():
         train_loop(
             args=args, device=device, local_rank=local_rank,
             checkpoint_dir=checkpoint_dir, path_output=path_output,
-            train_lr=train_lr, train_hr=train_hr,
-            G=G, D=D
+            loader=train_loader, G=G, D=D
         )
     else:
         evaluate_loop(

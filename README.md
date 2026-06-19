@@ -86,6 +86,46 @@ Optional flags:
 - `--amp` to enable bfloat16 autocast.
 - `--mode eval` for evaluation mode.
 
+### Patch Training
+Patch training is supported for both daily training scripts with `--patch-training`.
+The cached full fields are kept on disk, and random paired LR/HR crops are sampled
+inside the PyTorch dataset at training time.
+
+Recommended starting point:
+```bash
+# Stage 1: 1 deg -> 0.25 deg
+python3 -u train_daily_frontier_srun.py \
+  --master_addr <MASTER_ADDR> \
+  --master_port 3442 \
+  --mode train \
+  --batch-size 64 \
+  --version <stage1_version> \
+  --base-dir ${SRGAN_BASE_DIR} \
+  --var tmax \
+  --patch-training \
+  --lr-patch-size 8 \
+  --scale-factor 4 \
+  --patches-per-image 4
+
+# Stage 2: 0.25 deg -> 0.0416 deg
+python3 -u train_daily_frontier_srun_step2.py \
+  --master_addr <MASTER_ADDR> \
+  --master_port 3442 \
+  --mode train \
+  --batch-size 4 \
+  --version <stage2_version> \
+  --base-dir ${SRGAN_BASE_DIR} \
+  --var tmax \
+  --patch-training \
+  --lr-patch-size 48 \
+  --scale-factor 6 \
+  --patches-per-image 4
+```
+
+Train Stage 1 and Stage 2 as separate models. They use different scale factors
+and different physical context per grid cell, so separate training keeps each
+model focused on its own mapping.
+
 ### Run with SLURM
 Use `srgan_srun.sh` as the template launcher:
 ```bash

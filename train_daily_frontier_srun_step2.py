@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from srgan_torch import SRGAN_g_hr_26_64RB, SRGAN_d_hr_gap
 from dataread_mem import read_saved_data
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
+from patch_dataset import PatchDaymetDataset
 
 # ============================== CLI ARGS ===============================
 
@@ -48,6 +49,14 @@ def build_parser():
 
     # Dataloader workers (defaults tuned for Frontier example)
     p.add_argument('--num-workers', type=int, default=7)
+    p.add_argument('--patch-training', action='store_true',
+                   help='Train on random LR/HR spatial patches instead of full fields')
+    p.add_argument('--lr-patch-size', type=int, default=48,
+                   help='LR patch width/height in grid cells for patch training')
+    p.add_argument('--scale-factor', type=int, default=6,
+                   help='Spatial upscaling factor for paired HR patches')
+    p.add_argument('--patches-per-image', type=int, default=4,
+                   help='Number of random patches sampled per timestep each epoch')
 
     p.add_argument("--master_addr", type=str, required=True)
     p.add_argument("--master_port", type=str, required=True)
@@ -686,13 +695,33 @@ def main():
     # --------------------------------------------------
     # Train or Eval
     if args.mode == 'train':
-        train_dataset = DaymetLazyDataset(
-            path_output=path_output,
-            scaler=loaded_scaler,
-            split="train",
-            elevation=elevation,
-            elevation_hr=elevation_hr,
-        )
+        if args.patch_training:
+            train_dataset = PatchDaymetDataset(
+                path_output=path_output,
+                scaler=loaded_scaler,
+                split="train",
+                lr_patch_size=args.lr_patch_size,
+                scale_factor=args.scale_factor,
+                patches_per_image=args.patches_per_image,
+                elevation=elevation,
+                elevation_hr=elevation_hr,
+                random_patches=True,
+            )
+            if rank == 0:
+                print("[Patch training enabled]", flush=True)
+                print(f"LR field shape: {train_dataset.lr_shape}", flush=True)
+                print(f"HR field shape: {train_dataset.hr_shape}", flush=True)
+                print(f"LR patch shape: {train_dataset.lr_patch_shape}", flush=True)
+                print(f"HR patch shape: {train_dataset.hr_patch_shape}", flush=True)
+                print(f"Patches per timestep: {args.patches_per_image}", flush=True)
+        else:
+            train_dataset = DaymetLazyDataset(
+                path_output=path_output,
+                scaler=loaded_scaler,
+                split="train",
+                elevation=elevation,
+                elevation_hr=elevation_hr,
+            )
 
         if is_dist():
             train_sampler = DistributedSampler(
@@ -708,7 +737,7 @@ def main():
             batch_size=args.batch_size,   # start with 1 or 2
             sampler=train_sampler,
             shuffle=(train_sampler is None),
-            num_workers=4,                # 2–4 max on Frontier
+            num_workers=args.num_workers,
             pin_memory=False,             # IMPORTANT
             persistent_workers=False,
         )
