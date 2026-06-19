@@ -1,0 +1,16 @@
+for 0.1 we use the following models for the downscaling year 1980-2019
+for 0.2 we use the following models for the downscaling year 2020-2059
+
+
+
+    v0.3 1980-2020 prcp daily 1 degree to 0.25 degree
+    v0.4 1980-2020 prcp daily 0.25 degree to 0.0416 degree
+
+    v0.5 1980-2020 tmax daily 1 degree to 0.25 degree
+    v0.6 1980-2020 tmax daily 0.25 degree to 0.0416 degree
+
+    v0.7 1980-2020 tmin daily 1 degree to 0.25 degree
+    v0.8 1980-2020 tmin daily 0.25 degree to 0.0416 degree
+
+
+for 0.3 we use the same models but the output with dims

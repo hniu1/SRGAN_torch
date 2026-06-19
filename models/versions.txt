@@ -1,0 +1,18 @@
+3h_*
+    v0.1 2015-2019 with temp trained by frontier
+    v0.2 2015-2019 with temp
+    v0.3 2015-2019 with prcp
+
+
+dy_
+    v0.1 1980-2015
+    
+    v0.3_test_param 1980-2020 prcp daily 1 degree to 0.25 degree
+    v0.3 1980-2020 prcp daily 1 degree to 0.25 degree
+    v0.4 1980-2020 prcp daily 0.25 degree to 0.0416 degree
+
+    v0.5 1980-2020 tmax daily 1 degree to 0.25 degree
+    v0.6 1980-2020 tmax daily 0.25 degree to 0.0416 degree
+
+    v0.7 1980-2020 tmin daily 1 degree to 0.25 degree
+    v0.8 1980-2020 tmin daily 0.25 degree to 0.0416 degree
