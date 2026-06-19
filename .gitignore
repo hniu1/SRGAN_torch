@@ -1,5 +1,7 @@
 __pycache__/
 .srgan_git/
+.agents/
+.codex/
 *.py[cod]
 *$py.class
 
