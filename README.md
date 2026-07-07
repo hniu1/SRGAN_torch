@@ -117,7 +117,7 @@ python3 -u train_daily_frontier_srun_step2.py \
   --base-dir ${SRGAN_BASE_DIR} \
   --var tmax \
   --patch-training \
-  --lr-patch-size 48 \
+  --lr-patch-size 32 \
   --scale-factor 6 \
   --patches-per-image 4
 ```

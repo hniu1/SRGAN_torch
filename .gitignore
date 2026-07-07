@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .vscode/
+.codex/
 logs/
 slurm_output/
 gcm_ds/

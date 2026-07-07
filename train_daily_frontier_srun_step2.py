@@ -51,7 +51,7 @@ def build_parser():
     p.add_argument('--num-workers', type=int, default=7)
     p.add_argument('--patch-training', action='store_true',
                    help='Train on random LR/HR spatial patches instead of full fields')
-    p.add_argument('--lr-patch-size', type=int, default=48,
+    p.add_argument('--lr-patch-size', type=int, default=32,
                    help='LR patch width/height in grid cells for patch training')
     p.add_argument('--scale-factor', type=int, default=6,
                    help='Spatial upscaling factor for paired HR patches')
