@@ -1,99 +1,84 @@
-# SRGAN Batch Loading
+# SRGAN Patch Training
 
-This repository contains scripts to:
-- prepare Daymet training data caches, and
-- train daily SRGAN downscaling models on HPC systems (Frontier/Andes style workflows), and
-- run GCM-to-fine-grid downscaling using trained daily models.
+This branch trains daily SRGAN downscaling models with spatial patches instead
+of full-domain fields. The goal is to make the North America workflow more
+scalable while keeping the same two-stage downscaling structure:
 
-## Main scripts
+| Stage | Mapping | LR patch | HR patch | Scale |
+|---|---|---:|---:|---:|
+| Stage 1 | 1 deg -> 0.25 deg | `8 x 8` | `32 x 32` | `4x` |
+| Stage 2 | 0.25 deg -> 0.0416 deg | `32 x 32` | `192 x 192` | `6x` |
 
-### Prepare Daymet
-- `prepare_daymet.py`: prepares cached arrays and scaler files for a given variable and year range.
-- `prepare_daymet_srun_frontier.sh`: Frontier batch launcher example.
-- `prepare_daymet_srun_andes.sh`: Andes/local batch launcher example.
+Patch training is lazy: cached full-field arrays stay on disk, and paired
+LR/HR crops are sampled inside the PyTorch dataset during training. The code
+does not pre-write every sliding-window patch to disk.
 
-### Train Daily
-- `train_daily_frontier_srun.py`
-- `train_daily_frontier_srun_step2.py`: 0.25° → 0.0416° (second step).
-- `srgan_srun.sh`: Frontier SLURM launcher example for daily training.
+## Main Files
 
-### GCM Downscaling
-- `gcm_downscaling.py`: final 100 km → 25 km → 4 km downscaling workflow.
-- `gcm_downscaling_srun.sh`: SLURM launcher for downscaling.
-- `gcm_downscling_scale.py`: utility script for inverse-scaling a saved downscaling array.
+- `prepare_daymet.py`: prepares cached Daymet/ERA5 arrays and scalers.
+- `patch_dataset.py`: samples paired LR/HR patches from cached arrays.
+- `train_daily_frontier_srun.py`: Stage 1 training, 1 deg -> 0.25 deg.
+- `train_daily_frontier_srun_step2.py`: Stage 2 training, 0.25 deg -> 0.0416 deg.
+- `srgan_torch.py`: generator and discriminator definitions.
+- `loss_torch.py`: SRGAN loss wrappers.
+- `scalers.py`: custom scaler utilities.
+- `srgan_srun.sh`: Frontier SLURM launcher template.
+- `gcm_downscaling.py`: applies trained models for GCM downscaling.
 
----
+## 1. Prepare Data
 
-## 1) Prepare Daymet data
+Data preparation writes cached arrays under `output/<version>/` and a scaler
+under `models/<version>/`.
 
-### What it creates
-For a selected `--version`, the script writes:
-- `models/<version>/scaler.pkl`
-- `output/<version>/x_train.npy`
-- `output/<version>/x_test.npy`
-- `output/<version>/y_train.npy`
-- `output/<version>/y_test.npy`
+For Stage 1, omit `--high-deg`:
 
-### Run directly
 ```bash
-export SRGAN_BASE_DIR=/path/to/SRGAN_batch_loading
+export SRGAN_BASE_DIR=/lustre/orion/proj-shared/cli138/7hn/SRGAN_patch_training
 
 python -u prepare_daymet.py \
   --base-dir ${SRGAN_BASE_DIR} \
-  --version dy_v0.8 \
-  --var tmin \
+  --version <stage1_version> \
+  --var tmax \
+  --year-start 1980 \
+  --year-end 2020
+```
+
+For Stage 2, include `--high-deg`:
+
+```bash
+python -u prepare_daymet.py \
+  --base-dir ${SRGAN_BASE_DIR} \
+  --version <stage2_version> \
+  --var tmax \
   --year-start 1980 \
   --year-end 2020 \
   --high-deg
 ```
 
-### Run with SLURM
-Use one of:
-- `prepare_daymet_srun_frontier.sh`
-- `prepare_daymet_srun_andes.sh`
+SLURM templates:
 
-Submit with:
 ```bash
 sbatch prepare_daymet_srun_frontier.sh
-# or
 sbatch prepare_daymet_srun_andes.sh
 ```
 
----
+## 2. Train With Patches
 
-## 2) Train daily SRGAN
+Both training scripts support:
 
-Daily training expects prepared arrays under `output/<version>/` and scaler/model files under `models/<version>/`.
-
-### Run directly (single node / manual launch)
-```bash
-export SRGAN_BASE_DIR=/path/to/SRGAN_batch_loading
-
-python3 -u train_daily_frontier_srun_step2.py \
-  --master_addr <MASTER_ADDR> \
-  --master_port 3442 \
-  --mode train \
-  --batch-size 4 \
-  --version dy_v0.8 \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --var tmax \
-  --w1-fn1 1e-5 \
-  --w2-fn2 1e3
+```text
+--patch-training
+--lr-patch-size
+--scale-factor
+--patches-per-image
 ```
 
-Optional flags:
-- `--initial-training` to run generator pretrain phase.
-- `--amp` to enable bfloat16 autocast.
-- `--mode eval` for evaluation mode.
+`--patches-per-image` controls how many random spatial crops are drawn from
+each timestep per epoch.
 
-### Patch Training
-Patch training is supported for both daily training scripts with `--patch-training`.
-The cached full fields are kept on disk, and random paired LR/HR crops are sampled
-inside the PyTorch dataset at training time.
+### Stage 1
 
-Recommended starting point:
 ```bash
-# Stage 1: 1 deg -> 0.25 deg
 python3 -u train_daily_frontier_srun.py \
   --master_addr <MASTER_ADDR> \
   --master_port 3442 \
@@ -106,8 +91,11 @@ python3 -u train_daily_frontier_srun.py \
   --lr-patch-size 8 \
   --scale-factor 4 \
   --patches-per-image 4
+```
 
-# Stage 2: 0.25 deg -> 0.0416 deg
+### Stage 2
+
+```bash
 python3 -u train_daily_frontier_srun_step2.py \
   --master_addr <MASTER_ADDR> \
   --master_port 3442 \
@@ -122,46 +110,42 @@ python3 -u train_daily_frontier_srun_step2.py \
   --patches-per-image 4
 ```
 
-Train Stage 1 and Stage 2 as separate models. They use different scale factors
-and different physical context per grid cell, so separate training keeps each
-model focused on its own mapping.
+Train Stage 1 and Stage 2 as separate models. They use different scale factors,
+different model architectures, and different physical grid spacings.
 
-### Run with SLURM
-Use `srgan_srun.sh` as the template launcher:
+## 3. Evaluate Or Downscale
+
+Evaluation mode still uses the trained generator checkpoint from
+`models/<version>/`.
+
 ```bash
-sbatch srgan_srun.sh
+python3 -u train_daily_frontier_srun_step2.py \
+  --master_addr <MASTER_ADDR> \
+  --master_port 3442 \
+  --mode eval \
+  --batch-size 4 \
+  --version <stage2_version> \
+  --base-dir ${SRGAN_BASE_DIR} \
+  --var tmax
 ```
 
----
+GCM downscaling uses:
 
-## 3) GCM downscaling
-
-This stage applies trained daily SRGAN generators to bias-corrected GCM inputs and writes predictions under `gcm_ds/<downscale_version>/<var>/<gcm>/`.
-
-### Main script
-Use `gcm_downscaling.py` (this is the current entrypoint used by `gcm_downscaling_srun.sh`).
-
-### Run directly
 ```bash
 python -u gcm_downscaling.py
-```
-
-### Run with SLURM
-```bash
 sbatch gcm_downscaling_srun.sh
 ```
 
-### Typical outputs
+Typical GCM outputs:
+
 - `y_gcm_100.npy`
 - `y_pred_25.npy`
-- `y_pred_4.npy` (or `y_pred_4_test.npy` depending on script branch)
-
-### Important
-- `gcm_downscaling.py` currently sets variable list, GCM list, scenario, and model versions inside `__main__` (no CLI args yet), so edit those values in the script before submitting jobs.
-
----
+- `y_pred_4.npy`
 
 ## Notes
-- Set `SRGAN_BASE_DIR` to your repo root to avoid editing hardcoded paths.
-- Keep `--version` consistent between `prepare_daymet.py` and training scripts.
+
+- Use `SRGAN_BASE_DIR` to point scripts at this worktree.
+- Keep `--version` consistent between data preparation, training, and evaluation.
 - Common variables are `tmax`, `tmin`, and precipitation (`prcp` in data-prep scripts).
+- Full-domain inference may still work because the generators are convolutional.
+  If memory becomes limiting, add tiled inference with overlap/halo cropping.
