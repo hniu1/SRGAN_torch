@@ -17,7 +17,7 @@ from torch.utils.data import Dataset, DataLoader, DistributedSampler
 import matplotlib.pyplot as plt
 
 # ---- Project-local modules (must be importable) ----
-from srgan_torch import SRGAN_g_lr_26, SRGAN_d_lr_odd
+from srgan_torch import SRGAN_g_lr_patch, SRGAN_d_lr_odd
 from dataread import read_saved_data
 from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
 from patch_dataset import PatchDaymetDataset
@@ -32,6 +32,8 @@ def build_parser():
     p.add_argument('--batch-size', type=int, default=128, help='Per-GPU batch size')
     p.add_argument('--amp', action='store_true', help='Enable bfloat16 autocast (MI250X)')
     p.add_argument('--version', type=str, default='dy_v0.1', help='Run/version tag for outputs')
+    p.add_argument('--data-version', type=str, default=None,
+                   help='Version containing prepared .npy data/scaler (defaults to --version)')
     p.add_argument("--year-start", type=int, default=1980)
     p.add_argument("--year-end", type=int, default=2014)
     p.add_argument('--base-dir', type=str, default=DEFAULT_BASE_DIR)
@@ -185,9 +187,20 @@ def build_train_loader(args, dataset):
     return loader
 
 
+def build_validation_loader(args, dataset):
+    sampler = DistributedSampler(
+        dataset, num_replicas=get_world_size(), rank=get_rank(),
+        shuffle=False, drop_last=False
+    ) if is_dist() else None
+    return DataLoader(
+        dataset, batch_size=args.batch_size, shuffle=False, sampler=sampler,
+        drop_last=False, num_workers=0, pin_memory=False,
+    )
+
+
 # ============================== TRAINING ===============================
 
-def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G, D):
+def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, val_loader, G, D):
     # Optimizers / schedulers
     g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
     g_optimizer      = optim.Adam(G.parameters(), lr=1e-4)
@@ -221,7 +234,27 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G,
     )
 
     g_init_losses, g_losses, d_losses = [], [], []
+    val_init_losses, val_adv_losses = [], []
     autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if args.amp else nullcontext()
+
+    @torch.no_grad()
+    def validation_loss():
+        G.eval()
+        totals = torch.zeros(3, device=device, dtype=torch.float64)
+        for lr_patch, hr_patch in val_loader:
+            lr_patch = lr_patch.to(device, non_blocking=True)
+            hr_patch = hr_patch.to(device, non_blocking=True)
+            pred = G(lr_patch)
+            diff = pred.float() - hr_patch.float()
+            totals[0] += torch.sum(diff * diff).double()
+            totals[1] += torch.sum(torch.abs(diff)).double()
+            totals[2] += diff.numel()
+        if is_dist():
+            dist.all_reduce(totals, op=dist.ReduceOp.SUM)
+        G.train()
+        mse = totals[0] / totals[2].clamp_min(1)
+        mae = totals[1] / totals[2].clamp_min(1)
+        return float((mse + 0.1 * mae).item())
 
     ###################################################################
     # ---- Initial training (optional) --------------------------------------
@@ -259,14 +292,17 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G,
 
             g_avg = g_sum / max(1, steps)
             g_init_losses.append(g_avg)
+            val_loss = validation_loss()
+            val_init_losses.append(val_loss)
             g_lr_sched_init.step()
             if get_rank() == 0:
                 print(f"[init] epoch {epoch+1}/{args.n_epoch_init} "
-                        f"g_loss={g_avg:.6e}  best={best_loss_init:.6e}  wait={wait_init}",
+                        f"g_loss={g_avg:.6e} val_loss={val_loss:.6e} "
+                        f"best={best_loss_init:.6e} wait={wait_init}",
                         flush=True)
 
-            if g_avg < best_loss_init - min_delta_init:
-                best_loss_init, wait_init = g_avg, 0
+            if val_loss < best_loss_init - min_delta_init:
+                best_loss_init, wait_init = val_loss, 0
                 if get_rank() == 0:
                     to_save = G.module if isinstance(G, nn.parallel.DistributedDataParallel) else G
                     torch.save(to_save.state_dict(), os.path.join(checkpoint_dir, 'g_init.pth'))
@@ -423,12 +459,14 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G,
         d_avg = d_sum / max(1, steps)
         g_losses.append(g_avg)
         d_losses.append(d_avg)
+        val_loss = validation_loss()
+        val_adv_losses.append(val_loss)
         prev_g_avg = g_avg
         prev_d_avg = d_avg
 
         if get_rank() == 0:        
-            if g_avg < best_g_loss - min_delta_adv:
-                best_g_loss = g_avg
+            if val_loss < best_g_loss - min_delta_adv:
+                best_g_loss = val_loss
                 wait_adv = 0
                 # Optional: save best adversarial checkpoint
                 to_save_G = G.module if is_dist() else G
@@ -439,11 +477,15 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G,
                 wait_adv += 1
                 print(f"[adv] no improvement {wait_adv}/{no_improve_adv}", flush=True)
 
-            print(f"[Epoch {epoch+1}/{args.n_epoch}] G_loss={g_avg:.4f}, D_loss={d_avg:.4f}, best_g_loss={best_g_loss:.4f}", flush=True)
+            print(f"[Epoch {epoch+1}/{args.n_epoch}] G_loss={g_avg:.4f}, "
+                  f"D_loss={d_avg:.4f}, val_loss={val_loss:.6f}, "
+                  f"best_val_loss={best_g_loss:.6f}", flush=True)
 
         # save average loss history (rank 0)
         if get_rank() == 0:
-            loss_data = {'g_init_losses': g_init_losses, 'g_losses': g_losses, 'd_losses': d_losses}
+            loss_data = {'g_init_losses': g_init_losses, 'val_init_losses': val_init_losses,
+                         'g_losses': g_losses, 'd_losses': d_losses,
+                         'val_adv_losses': val_adv_losses}
             with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'w') as f:
                 json.dump(loss_data, f, indent=2)
 
@@ -462,7 +504,9 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, G,
 
     # Save curves (rank-0)
     if get_rank() == 0:
-        loss_data = {'g_init_losses': g_init_losses, 'g_losses': g_losses, 'd_losses': d_losses}
+        loss_data = {'g_init_losses': g_init_losses, 'val_init_losses': val_init_losses,
+                     'g_losses': g_losses, 'd_losses': d_losses,
+                     'val_adv_losses': val_adv_losses}
         with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'w') as f:
             json.dump(loss_data, f, indent=2)
 
@@ -549,6 +593,12 @@ def run_prediction(G, test_lr, scaler, path_output, out_name, device, elevation_
 def main():
     args = build_parser().parse_args()
 
+    if args.mode == "train" and not args.patch_training:
+        raise ValueError(
+            "SRGAN_g_lr_patch training requires --patch-training; "
+            "the dedicated generator is configured for paired LR/HR patches."
+        )
+
     num_gpus_per_node = torch.cuda.device_count()
     # print(f"num_gpus_per_node = {num_gpus_per_node}", flush=True)
 
@@ -612,9 +662,12 @@ def main():
 
     # Paths / flags
     version = args.version
+    data_version = args.data_version or version
     base_dir = args.base_dir
     checkpoint_dir = os.path.join(base_dir, "models", version)
     path_output = os.path.join(base_dir, "output", version)
+    data_checkpoint_dir = os.path.join(base_dir, "models", data_version)
+    data_path_output = os.path.join(base_dir, "output", data_version)
     os.makedirs(checkpoint_dir, exist_ok=True)
     os.makedirs(path_output, exist_ok=True)
 
@@ -624,14 +677,30 @@ def main():
     elevation_hr = False
 
     # Normal cached-data path
-    with open(f'{checkpoint_dir}/scaler.pkl', 'rb') as f:
+    with open(f'{data_checkpoint_dir}/scaler.pkl', 'rb') as f:
         loaded_scaler = pickle.load(f)
 
+    if rank == 0:
+        # Keep inference self-contained while allowing prepared arrays to be reused.
+        with open(f'{checkpoint_dir}/scaler.pkl', 'wb') as f:
+            pickle.dump(loaded_scaler, f)
+        with open(os.path.join(path_output, 'run_config.json'), 'w') as f:
+            json.dump({
+                'model_version': version,
+                'data_version': data_version,
+                'data_path_output': data_path_output,
+                'generator': 'SRGAN_g_lr_patch_pixelshuffle',
+                'lr_patch_size': args.lr_patch_size,
+                'scale_factor': args.scale_factor,
+            }, f, indent=2)
+    dist.barrier()
+
     train_loader = None
+    val_loader = None
     test_lr = None
     if args.mode == "train" and args.patch_training:
         train_dataset = PatchDaymetDataset(
-            path_output=path_output,
+            path_output=data_path_output,
             scaler=loaded_scaler,
             split="train",
             lr_patch_size=args.lr_patch_size,
@@ -642,6 +711,18 @@ def main():
             random_patches=True,
         )
         train_loader = build_train_loader(args, train_dataset)
+        val_dataset = PatchDaymetDataset(
+            path_output=data_path_output,
+            scaler=loaded_scaler,
+            split="test",
+            lr_patch_size=args.lr_patch_size,
+            scale_factor=args.scale_factor,
+            patches_per_image=4,
+            elevation=elevation,
+            elevation_hr=elevation_hr,
+            random_patches=False,
+        )
+        val_loader = build_validation_loader(args, val_dataset)
         hr_shape = train_dataset.hr_patch_shape
         if rank == 0:
             print("[Patch training enabled]")
@@ -652,10 +733,10 @@ def main():
             print(f"Patches per timestep: {args.patches_per_image}")
     else:
         try:
-            train_lr = read_saved_data("x_train", path_output, loaded_scaler)
-            test_lr  = read_saved_data("x_test",  path_output, loaded_scaler)
-            train_hr = read_saved_data("y_train", path_output, loaded_scaler)
-            test_hr  = read_saved_data("y_test",  path_output, loaded_scaler)
+            train_lr = read_saved_data("x_train", data_path_output, loaded_scaler)
+            test_lr  = read_saved_data("x_test",  data_path_output, loaded_scaler)
+            train_hr = read_saved_data("y_train", data_path_output, loaded_scaler)
+            test_hr  = read_saved_data("y_test",  data_path_output, loaded_scaler)
         except FileNotFoundError as e:
             if rank == 0:
                 print("Error loading cached data:", e)
@@ -663,11 +744,11 @@ def main():
 
         # Optional: attach elevation channels
         if elevation:
-            elev_lr = np.load(f'{path_output}/elev_lr_scaled.npy')
+            elev_lr = np.load(f'{data_path_output}/elev_lr_scaled.npy')
             train_lr = np.concatenate((train_lr, elev_lr[:train_lr.shape[0]]), axis=3)
             test_lr  = np.concatenate((test_lr,  elev_lr[:test_lr.shape[0]]),  axis=3)
             if elevation_hr:
-                elev_hr = np.load(f'{path_output}/elev_hr_scaled.npy')
+                elev_hr = np.load(f'{data_path_output}/elev_hr_scaled.npy')
                 train_hr = np.concatenate((train_hr, elev_hr[:train_hr.shape[0]]), axis=3)
                 test_hr  = np.concatenate((test_hr,  elev_hr[:test_hr.shape[0]]),  axis=3)
 
@@ -683,7 +764,7 @@ def main():
 
     # Models
     in_channels = 2 if elevation else 1
-    G = SRGAN_g_lr_26(in_channels=in_channels).to(device)
+    G = SRGAN_g_lr_patch(in_channels=in_channels).to(device)
     D = SRGAN_d_lr_odd(hr_size=hr_shape).to(device)
 
 
@@ -702,7 +783,7 @@ def main():
         train_loop(
             args=args, device=device, local_rank=local_rank,
             checkpoint_dir=checkpoint_dir, path_output=path_output,
-            loader=train_loader, G=G, D=D
+            loader=train_loader, val_loader=val_loader, G=G, D=D
         )
     else:
         evaluate_loop(

@@ -1,151 +1,93 @@
-# SRGAN Patch Training
+# SRGAN Patch-Training Pipeline
 
-This branch trains daily SRGAN downscaling models with spatial patches instead
-of full-domain fields. The goal is to make the North America workflow more
-scalable while keeping the same two-stage downscaling structure:
-
-| Stage | Mapping | LR patch | HR patch | Scale |
-|---|---|---:|---:|---:|
-| Stage 1 | 1 deg -> 0.25 deg | `8 x 8` | `32 x 32` | `4x` |
-| Stage 2 | 0.25 deg -> 0.0416 deg | `32 x 32` | `192 x 192` | `6x` |
-
-Patch training is lazy: cached full-field arrays stay on disk, and paired
-LR/HR crops are sampled inside the PyTorch dataset during training. The code
-does not pre-write every sliding-window patch to disk.
-
-## Main Files
-
-- `prepare_daymet.py`: prepares cached Daymet/ERA5 arrays and scalers.
-- `patch_dataset.py`: samples paired LR/HR patches from cached arrays.
-- `train_daily_frontier_srun.py`: Stage 1 training, 1 deg -> 0.25 deg.
-- `train_daily_frontier_srun_step2.py`: Stage 2 training, 0.25 deg -> 0.0416 deg.
-- `srgan_torch.py`: generator and discriminator definitions.
-- `loss_torch.py`: SRGAN loss wrappers.
-- `scalers.py`: custom scaler utilities.
-- `srgan_srun.sh`: Frontier SLURM launcher template.
-- `gcm_downscaling.py`: applies trained models for GCM downscaling.
-
-## 1. Prepare Data
-
-Data preparation writes cached arrays under `output/<version>/` and a scaler
-under `models/<version>/`.
-
-For Stage 1, omit `--high-deg`:
-
-```bash
-export SRGAN_BASE_DIR=/lustre/orion/proj-shared/cli138/7hn/SRGAN_patch_training
-
-python -u prepare_daymet.py \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --version <stage1_version> \
-  --var tmax \
-  --year-start 1980 \
-  --year-end 2020
-```
-
-For Stage 2, include `--high-deg`:
-
-```bash
-python -u prepare_daymet.py \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --version <stage2_version> \
-  --var tmax \
-  --year-start 1980 \
-  --year-end 2020 \
-  --high-deg
-```
-
-SLURM templates:
-
-```bash
-sbatch prepare_daymet_srun_frontier.sh
-sbatch prepare_daymet_srun_andes.sh
-```
-
-## 2. Train With Patches
-
-Both training scripts support:
+This repository trains and evaluates the Stage-1 temperature downscaler:
 
 ```text
---patch-training
---lr-patch-size
---scale-factor
---patches-per-image
+Daymet/ERA5 or GCM 1° -> SRGAN -> 0.25°
 ```
 
-`--patches-per-image` controls how many random spatial crops are drawn from
-each timestep per epoch.
+The active pipeline uses 8×8 LR patches, reflection padding, PixelShuffle,
+generator pretraining, and a ten-year 1980–1989 training dataset. The numbered
+filenames show the required execution order.
 
-### Stage 1
+## Active Stage-1 Pipeline
+
+| Step | Purpose | Python entry point | Frontier job |
+|---:|---|---|---|
+| 1 | Prepare 1980–1989 paired Daymet data | `pipeline_01_prepare_daymet.py` | `pipeline_01_prepare_tmax_10yr.slurm` |
+| 2 | Train the 8×8 patch model | `pipeline_02_train_stage1_patch.py` | `pipeline_02_train_stage1_patch.slurm` |
+| 3 | Evaluate on unseen paired 1990 Daymet | `pipeline_03_evaluate_daymet_1990.py` | `pipeline_03_evaluate_daymet_1990.slurm` |
+| 4 | Diagnose behavior on GCM input | `pipeline_04_diagnose_gcm.py` | `pipeline_04_diagnose_gcm.slurm` |
+
+Run the complete workflow in order:
 
 ```bash
-python3 -u train_daily_frontier_srun.py \
-  --master_addr <MASTER_ADDR> \
-  --master_port 3442 \
-  --mode train \
-  --batch-size 64 \
-  --version <stage1_version> \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --var tmax \
-  --patch-training \
-  --lr-patch-size 8 \
-  --scale-factor 4 \
-  --patches-per-image 4
+sbatch pipeline_01_prepare_tmax_10yr.slurm
+sbatch pipeline_02_train_stage1_patch.slurm
+sbatch pipeline_03_evaluate_daymet_1990.slurm
+sbatch pipeline_04_diagnose_gcm.slurm
 ```
 
-### Stage 2
+Use Slurm dependencies when submitting the workflow from scratch so downstream
+steps run only after upstream success.
 
-```bash
-python3 -u train_daily_frontier_srun_step2.py \
-  --master_addr <MASTER_ADDR> \
-  --master_port 3442 \
-  --mode train \
-  --batch-size 4 \
-  --version <stage2_version> \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --var tmax \
-  --patch-training \
-  --lr-patch-size 32 \
-  --scale-factor 6 \
-  --patches-per-image 4
+## Current Versions
+
+```text
+Prepared data: tmax_stage1_patch_10yr_data
+Model:         tmax_stage1_patch_pixelshuffle_10yr
+Training:      1980–1989 (3,653 days; random 80/20 split)
+External test: 1990
+LR patch:      8×8
+HR patch:      32×32
+Scale:         4×
 ```
 
-Train Stage 1 and Stage 2 as separate models. They use different scale factors,
-different model architectures, and different physical grid spacings.
+Prepared arrays are stored under `output/<data-version>/`. Scalers and model
+checkpoints are stored under `models/<version>/`.
 
-## 3. Evaluate Or Downscale
+## Shared Model Modules
 
-Evaluation mode still uses the trained generator checkpoint from
-`models/<version>/`.
+These are libraries imported by pipeline entry points and are not submitted
+directly:
 
-```bash
-python3 -u train_daily_frontier_srun_step2.py \
-  --master_addr <MASTER_ADDR> \
-  --master_port 3442 \
-  --mode eval \
-  --batch-size 4 \
-  --version <stage2_version> \
-  --base-dir ${SRGAN_BASE_DIR} \
-  --var tmax
-```
+- `srgan_torch.py` — generator and discriminator definitions.
+- `patch_dataset.py` — lazy paired LR/HR patch sampling.
+- `loss_torch.py` — content and adversarial loss wrappers.
+- `dataread_mem.py` — streaming preparation for large multi-year arrays.
+- `dataread.py` — older in-memory data utilities still used by legacy code.
+- `scalers.py` — serializable custom scalers.
 
-GCM downscaling uses:
+## Evaluation Guidance
 
-```bash
-python -u gcm_downscaling.py
-sbatch gcm_downscaling_srun.sh
-```
+Use Step 3 for quantitative daily accuracy because its 1° input and 0.25°
+truth are paired observations from the same dates. It reports bias, MAE, RMSE,
+temporal means, and improvement over bilinear interpolation.
 
-Typical GCM outputs:
+Do not interpret a historical GCM day minus the same calendar Daymet day as a
+daily forecast error. A free-running climate model is not synchronized with
+observed weather. Step 4 is intended for climatologies, distributions, seasonal
+cycles, and extremes.
 
-- `y_gcm_100.npy`
-- `y_pred_25.npy`
-- `y_pred_4.npy`
+## Stage 2 and Legacy Scripts
 
-## Notes
+- `stage2_train_patch.py` — experimental 0.25° -> 0.0416° Stage-2 trainer.
+- `legacy_prepare_stage2_tmin_frontier.slurm` — older Frontier tmin preparation.
+- `legacy_prepare_stage2_tmin_andes.slurm` — older Andes tmin preparation.
+- `legacy_downscale_gcm_two_stage.py` and `.slurm` — older two-stage GCM workflow.
 
-- Use `SRGAN_BASE_DIR` to point scripts at this worktree.
-- Keep `--version` consistent between data preparation, training, and evaluation.
-- Common variables are `tmax`, `tmin`, and precipitation (`prcp` in data-prep scripts).
-- Full-domain inference may still work because the generators are convolutional.
-  If memory becomes limiting, add tiled inference with overlap/halo cropping.
+These files are retained for reference but are not part of the validated,
+numbered Stage-1 pipeline.
+
+## Utilities
+
+- `utility_plot_training_losses.py`
+- `utility_postprocess_predictions.py`
+- `utility_inverse_scale_gcm.py`
+
+## Temporary Compatibility File
+
+`daymet_stage1_evaluate.py` is a small forwarding entry point retained only for
+already queued Slurm job `5167356`. New runs must use
+`pipeline_03_evaluate_daymet_1990.py` or its `.slurm` launcher. The compatibility
+file can be removed after that queued job finishes.

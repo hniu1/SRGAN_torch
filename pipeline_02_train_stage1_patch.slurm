@@ -35,21 +35,25 @@ rm -rf ${MIOPEN_USER_DB_PATH}
 mkdir -p ${MIOPEN_USER_DB_PATH}
 
 
-VERSION=${SRGAN_VERSION:-tmax_stage1_patch_test}
+VERSION=${SRGAN_VERSION:-tmax_stage1_patch_pixelshuffle_10yr}
+DATA_VERSION=${SRGAN_DATA_VERSION:-tmax_stage1_patch_10yr_data}
 VAR=${SRGAN_VAR:-tmax}
 
 srun \
-  python3 -u train_daily_frontier_srun.py \
+  python3 -u pipeline_02_train_stage1_patch.py \
     --master_addr=$MASTER_ADDR \
     --master_port=3442 \
     --mode train \
     --batch-size 64 \
     --version ${VERSION} \
+    --data-version ${DATA_VERSION} \
     --base-dir ${BASE_DIR} \
     --var ${VAR} \
     --patch-training \
     --lr-patch-size 8 \
     --scale-factor 4 \
-    --patches-per-image 4 \
+    --patches-per-image 16 \
+    --initial-training \
+    --n-epoch-init 50 \
     --w1-fn1 1e-5 \
     --w2-fn2 1e3

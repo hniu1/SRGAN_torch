@@ -476,6 +476,90 @@ class SRGAN_g_lr_26(nn.Module):
         x = self.conv6(x)
         return x
 
+
+class PatchResidualBlock(nn.Module):
+    """Small-patch residual block without zero padding or BatchNorm."""
+
+    def __init__(self, channels=64):
+        super().__init__()
+        self.conv1 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels, kernel_size=3, padding=0, bias=True),
+        )
+        self.act = nn.PReLU(channels)
+        self.conv2 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels, kernel_size=3, padding=0, bias=True),
+        )
+
+    def forward(self, x):
+        return x + self.conv2(self.act(self.conv1(x)))
+
+
+class SRGAN_g_lr_patch(nn.Module):
+    """Generator designed for 8x8 LR patches and 4x super-resolution.
+
+    The original 16-block generator has a receptive field much larger than an
+    8x8 patch and repeatedly introduces zeros at every patch edge.  This model
+    is deliberately shallow, uses reflection padding, omits BatchNorm, keeps
+    PixelShuffle upsampling, and learns a correction to a bilinear baseline.
+    """
+
+    def __init__(self, in_channels, channels=64, num_residual_blocks=1):
+        super().__init__()
+        if in_channels < 1:
+            raise ValueError("in_channels must include the temperature channel")
+
+        self.stem = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_channels, channels, kernel_size=3, padding=0, bias=True),
+            nn.PReLU(channels),
+        )
+        self.residual_blocks = nn.Sequential(
+            *[PatchResidualBlock(channels) for _ in range(num_residual_blocks)]
+        )
+        self.trunk = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels, kernel_size=3, padding=0, bias=True),
+        )
+        self.up1 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels * 4, kernel_size=3, padding=0, bias=True),
+            nn.PixelShuffle(2),
+            nn.PReLU(channels),
+        )
+        self.up2 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels * 4, kernel_size=3, padding=0, bias=True),
+            nn.PixelShuffle(2),
+            nn.PReLU(channels),
+        )
+        self.output = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, 1, kernel_size=3, padding=0, bias=True),
+        )
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, a=0.2, mode="fan_in")
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+        # Start from bilinear interpolation; training learns only corrections.
+        nn.init.zeros_(self.output[1].weight)
+        nn.init.zeros_(self.output[1].bias)
+
+    def forward(self, x):
+        baseline = F.interpolate(
+            x[:, :1], scale_factor=4, mode="bilinear", align_corners=False
+        )
+        features = self.stem(x)
+        features = features + self.trunk(self.residual_blocks(features))
+        features = self.up1(features)
+        correction = self.output(self.up2(features))
+        return baseline + correction
+
 class SRGAN_g_hr_26(nn.Module):
     def __init__(self, in_channels):
         super(SRGAN_g_hr_26, self).__init__()

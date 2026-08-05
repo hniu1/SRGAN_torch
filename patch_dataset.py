@@ -121,7 +121,12 @@ class PatchDaymetDataset(Dataset):
             return row, col
 
         n_cols = self.max_col + 1
-        offset = patch_index % ((self.max_row + 1) * n_cols)
+        n_origins = (self.max_row + 1) * n_cols
+        # Spread deterministic validation patches across the full domain.
+        if self.patches_per_image == 1:
+            offset = n_origins // 2
+        else:
+            offset = round(patch_index * (n_origins - 1) / (self.patches_per_image - 1))
         return offset // n_cols, offset % n_cols
 
     def _elevation_slice(self, elev, sample_index, row, col, size):

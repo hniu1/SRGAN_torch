@@ -12,9 +12,9 @@ class WithLoss_init(nn.Module):
 
     def forward(self, lr, hr):
         out = self.G_net(lr)
-        loss1 = 1e4 * self.loss_fn1(out, hr)
-        # loss2 = self.loss_fn2(out, hr)
-        return loss1
+        # Establish accurate temperatures before introducing adversarial loss.
+        # MSE controls large errors while a small L1 term improves robustness.
+        return self.loss_fn1(out, hr) + 0.1 * self.loss_fn2(out, hr)
     
 
 class WithLoss_G_old(nn.Module):

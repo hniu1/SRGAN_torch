@@ -13,7 +13,7 @@ conda init bash
 source ~/.bashrc
 conda activate srgan
 
-python -u prepare_daymet.py \
+python -u pipeline_01_prepare_daymet.py \
     --version dy_v0.8 \
     --var tmin \
     --year-start 1980 \

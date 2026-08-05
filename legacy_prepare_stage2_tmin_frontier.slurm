@@ -17,7 +17,7 @@ conda activate /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm
 
 
 srun \
-     python -u prepare_daymet.py \
+     python -u pipeline_01_prepare_daymet.py \
     --version dy_0.8 \
     --var tmin \
     --year-start 1980 \
