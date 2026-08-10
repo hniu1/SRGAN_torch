@@ -43,6 +43,34 @@ HR patch:      32×32
 Scale:         4×
 ```
 
+### Experimental terrain-aware version
+
+The following separate workflow preserves the current model while testing a
+deeper generator conditioned on native 0.25° elevation:
+
+```bash
+python pipeline_01b_prepare_hr_elevation.py
+sbatch pipeline_02_train_stage1_hr_elev.slurm
+sbatch pipeline_03_evaluate_daymet_1990_hr_elev.slurm
+```
+
+The implementation is isolated in `pipeline_02_train_stage1_hr_elev.py`.
+The existing `pipeline_02_train_stage1_patch.py` and its current-model launcher
+remain unchanged by the terrain-aware experiment.
+
+```text
+Model version: tmax_stage1_patch_hr_elev_deep_10yr
+Training patch: 16×16 LR -> 64×64 HR
+LR trunk:       4 residual blocks, 96 channels
+HR fusion:      2 residual blocks
+HR predictors:  elevation, upscaled LR elevation, elevation anomaly
+```
+
+The new output folder reuses the prepared ten-year arrays through symbolic
+links and contains both LR and HR elevation fields. This avoids duplicating
+1.8 GB or rerunning data preparation; the original
+`tmax_stage1_patch_pixelshuffle_10yr` checkpoint is unchanged.
+
 Prepared arrays are stored under `output/<data-version>/`. Scalers and model
 checkpoints are stored under `models/<version>/`.
 

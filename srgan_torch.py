@@ -560,6 +560,93 @@ class SRGAN_g_lr_patch(nn.Module):
         correction = self.output(self.up2(features))
         return baseline + correction
 
+
+class SRGAN_g_lr_patch_hr_elev(nn.Module):
+    """Deeper patch generator conditioned on native 0.25-degree elevation.
+
+    LR input channels are temperature and 1-degree elevation.  The separate
+    HR elevation tensor is fused only after the two PixelShuffle stages.  Its
+    anomaly relative to upscaled LR elevation explicitly describes unresolved
+    sub-grid terrain.
+    """
+
+    def __init__(self, in_channels=2, channels=96, num_residual_blocks=4):
+        super().__init__()
+        if in_channels < 2:
+            raise ValueError("Expected LR temperature and elevation channels")
+        self.stem = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_channels, channels, 3, padding=0, bias=True),
+            nn.PReLU(channels),
+        )
+        self.residual_blocks = nn.Sequential(
+            *[PatchResidualBlock(channels) for _ in range(num_residual_blocks)]
+        )
+        self.trunk = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels, 3, padding=0, bias=True),
+        )
+        self.up1 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels * 4, 3, padding=0, bias=True),
+            nn.PixelShuffle(2),
+            nn.PReLU(channels),
+        )
+        self.up2 = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels * 4, 3, padding=0, bias=True),
+            nn.PixelShuffle(2),
+            nn.PReLU(channels),
+        )
+        # HR features + HR elevation + upscaled LR elevation + anomaly.
+        self.hr_fusion = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels + 3, channels, 3, padding=0, bias=True),
+            nn.PReLU(channels),
+            PatchResidualBlock(channels),
+            PatchResidualBlock(channels),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels, channels // 2, 3, padding=0, bias=True),
+            nn.PReLU(channels // 2),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(channels // 2, 1, 3, padding=0, bias=True),
+        )
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, a=0.2, mode="fan_in")
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+        # Begin from bilinear temperature; learn terrain-aware corrections.
+        final = self.hr_fusion[-1]
+        nn.init.zeros_(final.weight)
+        nn.init.zeros_(final.bias)
+
+    def forward(self, x, elevation_hr):
+        if elevation_hr.ndim == 3:
+            elevation_hr = elevation_hr[:, None]
+        baseline = F.interpolate(
+            x[:, :1], scale_factor=4, mode="bilinear", align_corners=False
+        )
+        elevation_lr_hr = F.interpolate(
+            x[:, 1:2], scale_factor=4, mode="bilinear", align_corners=False
+        )
+        if elevation_hr.shape[-2:] != baseline.shape[-2:]:
+            raise ValueError(
+                f"HR elevation {elevation_hr.shape[-2:]} does not match "
+                f"4x output {baseline.shape[-2:]}"
+            )
+        features = self.stem(x)
+        features = features + self.trunk(self.residual_blocks(features))
+        features = self.up2(self.up1(features))
+        terrain_anomaly = elevation_hr - elevation_lr_hr
+        correction = self.hr_fusion(torch.cat(
+            (features, elevation_hr, elevation_lr_hr, terrain_anomaly), dim=1
+        ))
+        return baseline + correction
+
 class SRGAN_g_hr_26(nn.Module):
     def __init__(self, in_channels):
         super(SRGAN_g_hr_26, self).__init__()

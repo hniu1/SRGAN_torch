@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Frontier-ready SRGAN training/eval (ROCm + DDP, one-rank-per-GPU)
+# Terrain-aware Stage-1 patch trainer (ROCm + DDP, one-rank-per-GPU).
 from mpi4py import MPI
 import os
 import socket
@@ -17,9 +17,9 @@ from torch.utils.data import Dataset, DataLoader, DistributedSampler
 import matplotlib.pyplot as plt
 
 # ---- Project-local modules (must be importable) ----
-from srgan_torch import SRGAN_g_lr_patch, SRGAN_d_lr_odd
+from srgan_torch import SRGAN_g_lr_patch, SRGAN_g_lr_patch_hr_elev, SRGAN_d_lr_odd
 from dataread import read_saved_data
-from loss_torch import WithLoss_init, WithLoss_G, WithLoss_D
+from loss_torch import WithLoss_init, WithLoss_G_balanced, WithLoss_D
 from patch_dataset import PatchDaymetDataset
 
 # ============================== CLI ARGS ===============================
@@ -47,7 +47,17 @@ def build_parser():
 
     # Loss weights
     p.add_argument('--w1-fn1', type=float, default=1e-4)
-    p.add_argument('--w2-fn2', type=float, default=1e3)
+    p.add_argument('--w2-fn2', type=float, default=1.0)
+    p.add_argument('--w-absolute', type=float, default=0.1)
+    p.add_argument('--w-gradient', type=float, default=0.1)
+    p.add_argument('--lr-init', type=float, default=5e-5)
+    p.add_argument('--lr-generator', type=float, default=2e-5)
+    p.add_argument('--lr-discriminator', type=float, default=1e-5)
+    p.add_argument('--gradient-clip', type=float, default=1.0)
+    p.add_argument('--d-train-threshold', type=float, default=0.6,
+                   help='Train D this epoch only if previous monitored D loss exceeds this value')
+    p.add_argument('--early-stop-patience-init', type=int, default=15)
+    p.add_argument('--early-stop-patience-adv', type=int, default=20)
 
     # Dataloader workers (defaults tuned for Frontier example)
     p.add_argument('--num-workers', type=int, default=7)
@@ -59,6 +69,7 @@ def build_parser():
                    help='Spatial upscaling factor for paired HR patches')
     p.add_argument('--patches-per-image', type=int, default=4,
                    help='Number of random patches sampled per timestep each epoch')
+    p.add_argument('--generator', choices=['patch', 'patch_hr_elev'], default='patch')
 
     p.add_argument("--master_addr", type=str, required=True)
     p.add_argument("--master_port", type=str, required=True)
@@ -202,9 +213,9 @@ def build_validation_loader(args, dataset):
 
 def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, val_loader, G, D):
     # Optimizers / schedulers
-    g_optimizer_init = optim.Adam(G.parameters(), lr=2e-4)
-    g_optimizer      = optim.Adam(G.parameters(), lr=1e-4)
-    d_optimizer      = optim.Adam(D.parameters(), lr=1e-4)
+    g_optimizer_init = optim.Adam(G.parameters(), lr=args.lr_init)
+    g_optimizer      = optim.Adam(G.parameters(), lr=args.lr_generator)
+    d_optimizer      = optim.Adam(D.parameters(), lr=args.lr_discriminator)
 
     g_lr_sched_init = torch.optim.lr_scheduler.StepLR(g_optimizer_init, step_size=25, gamma=0.5)
     g_lr_sched      = torch.optim.lr_scheduler.StepLR(g_optimizer,      step_size=50, gamma=0.8)
@@ -214,7 +225,6 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
     criterion_gan      = nn.BCEWithLogitsLoss().to(device)
     criterion_content  = nn.MSELoss().to(device)
     criterion_absolute = nn.L1Loss().to(device)
-    net_with_loss_init = WithLoss_init(G, criterion_content, criterion_absolute)
 
     # net_with_loss_D    = WithLoss_D(D, G, criterion_gan)
     # net_with_loss_G    = WithLoss_G(D, G, loss_fn1=criterion_gan, loss_fn2=criterion_content,
@@ -224,27 +234,41 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
         loss_fn=criterion_gan
     )
 
-    net_with_loss_G = WithLoss_G(
+    net_with_loss_G = WithLoss_G_balanced(
         D_net=D,
         loss_fn_gan=criterion_gan,
         loss_fn_content=criterion_content,
         loss_fn_abs=criterion_absolute,
         w_gan=args.w1_fn1,
-        w_content=args.w2_fn2
+        w_content=args.w2_fn2,
+        w_abs=args.w_absolute,
+        w_gradient=args.w_gradient,
     )
 
     g_init_losses, g_losses, d_losses = [], [], []
+    g_content_losses, g_gan_losses, g_gradient_losses = [], [], []
     val_init_losses, val_adv_losses = [], []
     autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if args.amp else nullcontext()
+
+    def unpack_batch(batch):
+        if len(batch) == 3:
+            lr_patch, hr_patch, hr_elev = batch
+            return lr_patch, hr_patch, hr_elev.to(device, non_blocking=True)
+        lr_patch, hr_patch = batch
+        return lr_patch, hr_patch, None
+
+    def generator_forward(lr_patch, hr_elev):
+        return G(lr_patch, hr_elev) if hr_elev is not None else G(lr_patch)
 
     @torch.no_grad()
     def validation_loss():
         G.eval()
         totals = torch.zeros(3, device=device, dtype=torch.float64)
-        for lr_patch, hr_patch in val_loader:
+        for batch in val_loader:
+            lr_patch, hr_patch, hr_elev = unpack_batch(batch)
             lr_patch = lr_patch.to(device, non_blocking=True)
             hr_patch = hr_patch.to(device, non_blocking=True)
-            pred = G(lr_patch)
+            pred = generator_forward(lr_patch, hr_elev)
             diff = pred.float() - hr_patch.float()
             totals[0] += torch.sum(diff * diff).double()
             totals[1] += torch.sum(torch.abs(diff)).double()
@@ -260,7 +284,7 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
     # ---- Initial training (optional) --------------------------------------
     ###################################################################
     if args.initial_training:
-        no_improve_init, min_delta_init = 5, 1e-8
+        no_improve_init, min_delta_init = args.early_stop_patience_init, 1e-8
         best_loss_init, wait_init = float('inf'), 0
 
         # Warm start if exists
@@ -277,15 +301,22 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                 loader.sampler.set_epoch(epoch)
 
             g_sum, steps = 0.0, 0
-            for lr_patch, hr_patch in loader:
+            for batch in loader:
+                lr_patch, hr_patch, hr_elev = unpack_batch(batch)
                 lr_patch = lr_patch.to(device, non_blocking=True)
                 hr_patch = hr_patch.to(device, non_blocking=True)
 
                 g_optimizer_init.zero_grad(set_to_none=True)
                 with autocast_ctx:
-                    loss = net_with_loss_init(lr_patch, hr_patch)
+                    prediction = generator_forward(lr_patch, hr_elev)
+                    loss = (
+                        criterion_content(prediction, hr_patch)
+                        + args.w_absolute * criterion_absolute(prediction, hr_patch)
+                        + args.w_gradient * WithLoss_G_balanced.gradient_loss(prediction, hr_patch)
+                    )
                 
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(G.parameters(), args.gradient_clip)
                 g_optimizer_init.step()
 
                 g_sum += float(loss.item()); steps += 1
@@ -305,7 +336,10 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                 best_loss_init, wait_init = val_loss, 0
                 if get_rank() == 0:
                     to_save = G.module if isinstance(G, nn.parallel.DistributedDataParallel) else G
-                    torch.save(to_save.state_dict(), os.path.join(checkpoint_dir, 'g_init.pth'))
+                    checkpoint_path = os.path.join(checkpoint_dir, 'g_init.pth')
+                    temporary_path = checkpoint_path + '.tmp'
+                    torch.save(to_save.state_dict(), temporary_path)
+                    os.replace(temporary_path, checkpoint_path)
             else:
                 wait_init += 1
                 if get_rank() == 0:
@@ -314,6 +348,10 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                     if get_rank() == 0:
                         print("[init] early stopping")
                     break
+            # Rank 0 is the only checkpoint writer. Do not let another rank
+            # begin loading until the atomic rename above has completed.
+            if is_dist():
+                dist.barrier()
             # Synchronize and log memory across all ranks
             if epoch == 0 and is_dist():
                 dist.barrier()
@@ -322,7 +360,7 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
     ###################################################################
     # ---- Adversarial training --------------------------------------
     ###################################################################
-    no_improve_adv, min_delta_adv = 20, 1e-8
+    no_improve_adv, min_delta_adv = args.early_stop_patience_adv, 1e-8
     best_g_loss, wait_adv = float('inf'), 0
 
     stop_training = torch.zeros(1, device=device, dtype=torch.int32)
@@ -374,14 +412,15 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
         if is_dist() and hasattr(loader.sampler, "set_epoch"):
             loader.sampler.set_epoch(epoch)
 
-        g_sum, d_sum, steps = 0.0, 0.0, 0
+        g_sum, d_sum, content_sum, gan_sum, gradient_sum, steps = 0.0, 0.0, 0.0, 0.0, 0.0, 0
         g_loss_val, d_loss_val = torch.tensor(1.0), torch.tensor(1.0)  # init dummy scalars
         stop_training.zero_()
 
         if get_rank() == 0:
-            # Example heuristic (yours, but now meaningful)
-            train_G_flag = int((prev_d_avg < 0.7) or (prev_g_avg > 0.1) or (epoch == 0))
-            train_D_flag = int((prev_d_avg > 0.5) or (epoch == 0))
+            # G always learns. D is paused whenever it is already sufficiently
+            # strong (low monitored BCE), then resumes if its loss rises.
+            train_G_flag = 1
+            train_D_flag = int((prev_d_avg > args.d_train_threshold) or (epoch == 0))
         else:
             train_G_flag = 0
             train_D_flag = 0
@@ -395,7 +434,8 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
             train_G = bool(train_G_flag)
             train_D = bool(train_D_flag)
 
-        for step, (lr_patch, hr_patch) in enumerate(loader):
+        for step, batch in enumerate(loader):
+            lr_patch, hr_patch, hr_elev = unpack_batch(batch)
             lr_patch = lr_patch.to(device, non_blocking=True)
             hr_patch = hr_patch.to(device, non_blocking=True)
 
@@ -406,12 +446,12 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                 set_requires_grad(D, False)
                 set_requires_grad(G, True)
                 with autocast_ctx:
-                    fake = G(lr_patch)          # grad enabled
+                    fake = generator_forward(lr_patch, hr_elev)  # grad enabled
             else:
                 # IMPORTANT: no_grad so DDP doesn't expect G grads/reduction
                 set_requires_grad(G, False)     # optional, but helps avoid accidental graph building
                 with torch.no_grad(), autocast_ctx:
-                    fake = G(lr_patch)
+                    fake = generator_forward(lr_patch, hr_elev)
 
             # ===========================================================
             # 1️⃣  Generator training phase
@@ -420,12 +460,13 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
             if train_G:
                 g_optimizer.zero_grad(set_to_none=True)
                 with autocast_ctx:
-                    g_loss_val = net_with_loss_G(hr_patch, fake)  # MUST use fake, must not call G internally
+                    g_loss_val, content_val, gan_val, _, _, gradient_val = net_with_loss_G.components(hr_patch, fake)
                 g_loss_val.backward()
+                torch.nn.utils.clip_grad_norm_(G.parameters(), args.gradient_clip)
                 g_optimizer.step()
             else:
                 with torch.no_grad(), autocast_ctx:
-                    g_loss_val = net_with_loss_G(hr_patch, fake)
+                    g_loss_val, content_val, gan_val, _, _, gradient_val = net_with_loss_G.components(hr_patch, fake)
 
             # ===========================================================
             # 2️⃣  Discriminator training phase
@@ -439,6 +480,7 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                 with autocast_ctx:
                     d_loss_val = net_with_loss_D(hr_patch, fake_d)  # MUST not call G internally
                 d_loss_val.backward()
+                torch.nn.utils.clip_grad_norm_(D.parameters(), args.gradient_clip)
                 d_optimizer.step()
             else:
                 with torch.no_grad(), autocast_ctx:
@@ -450,6 +492,9 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
             # ===========================================================
             g_sum += float(g_loss_val.detach().item())
             d_sum += float(d_loss_val.detach().item())
+            content_sum += float(content_val.detach().item())
+            gan_sum += float(gan_val.detach().item())
+            gradient_sum += float(gradient_val.detach().item())
             steps += 1
 
         # ===========================================================
@@ -457,8 +502,14 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
         # ===========================================================
         g_avg = g_sum / max(1, steps)
         d_avg = d_sum / max(1, steps)
+        content_avg = content_sum / max(1, steps)
+        gan_avg = gan_sum / max(1, steps)
+        gradient_avg = gradient_sum / max(1, steps)
         g_losses.append(g_avg)
         d_losses.append(d_avg)
+        g_content_losses.append(content_avg)
+        g_gan_losses.append(gan_avg)
+        g_gradient_losses.append(gradient_avg)
         val_loss = validation_loss()
         val_adv_losses.append(val_loss)
         prev_g_avg = g_avg
@@ -477,14 +528,18 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
                 wait_adv += 1
                 print(f"[adv] no improvement {wait_adv}/{no_improve_adv}", flush=True)
 
-            print(f"[Epoch {epoch+1}/{args.n_epoch}] G_loss={g_avg:.4f}, "
-                  f"D_loss={d_avg:.4f}, val_loss={val_loss:.6f}, "
-                  f"best_val_loss={best_g_loss:.6f}", flush=True)
+            print(f"[Epoch {epoch+1}/{args.n_epoch}] G_loss={g_avg:.8e}, "
+                  f"content={content_avg:.6e}, gan={gan_avg:.4f}, "
+                  f"gradient={gradient_avg:.6e}, "
+                  f"D_loss={d_avg:.4f}, train_D={train_D}, "
+                  f"val_loss={val_loss:.6f}, best_val_loss={best_g_loss:.6f}", flush=True)
 
         # save average loss history (rank 0)
         if get_rank() == 0:
             loss_data = {'g_init_losses': g_init_losses, 'val_init_losses': val_init_losses,
                          'g_losses': g_losses, 'd_losses': d_losses,
+                         'g_content_losses': g_content_losses, 'g_gan_losses': g_gan_losses,
+                         'g_gradient_losses': g_gradient_losses,
                          'val_adv_losses': val_adv_losses}
             with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'w') as f:
                 json.dump(loss_data, f, indent=2)
@@ -498,6 +553,10 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
         if stop_training.item() == 1:
             break
 
+        g_lr_sched.step()
+        if train_D:
+            d_lr_sched.step()
+
     # Sync ranks before plots/files
     if is_dist():
         torch.distributed.barrier()
@@ -506,6 +565,8 @@ def train_loop(args, device, local_rank, checkpoint_dir, path_output, loader, va
     if get_rank() == 0:
         loss_data = {'g_init_losses': g_init_losses, 'val_init_losses': val_init_losses,
                      'g_losses': g_losses, 'd_losses': d_losses,
+                     'g_content_losses': g_content_losses, 'g_gan_losses': g_gan_losses,
+                     'g_gradient_losses': g_gradient_losses,
                      'val_adv_losses': val_adv_losses}
         with open(os.path.join(checkpoint_dir, 'avg_loss_data.json'), 'w') as f:
             json.dump(loss_data, f, indent=2)
@@ -689,7 +750,7 @@ def main():
                 'model_version': version,
                 'data_version': data_version,
                 'data_path_output': data_path_output,
-                'generator': 'patch',
+                'generator': args.generator,
                 'lr_patch_size': args.lr_patch_size,
                 'scale_factor': args.scale_factor,
             }, f, indent=2)
@@ -708,6 +769,7 @@ def main():
             patches_per_image=args.patches_per_image,
             elevation=elevation,
             elevation_hr=elevation_hr,
+            return_elevation_hr=(args.generator == 'patch_hr_elev'),
             random_patches=True,
         )
         train_loader = build_train_loader(args, train_dataset)
@@ -717,9 +779,10 @@ def main():
             split="test",
             lr_patch_size=args.lr_patch_size,
             scale_factor=args.scale_factor,
-            patches_per_image=4,
+            patches_per_image=64,
             elevation=elevation,
             elevation_hr=elevation_hr,
+            return_elevation_hr=(args.generator == 'patch_hr_elev'),
             random_patches=False,
         )
         val_loader = build_validation_loader(args, val_dataset)
@@ -764,7 +827,10 @@ def main():
 
     # Models
     in_channels = 2 if elevation else 1
-    G = SRGAN_g_lr_patch(in_channels=in_channels).to(device)
+    if args.generator == 'patch_hr_elev':
+        G = SRGAN_g_lr_patch_hr_elev(in_channels=in_channels).to(device)
+    else:
+        G = SRGAN_g_lr_patch(in_channels=in_channels).to(device)
     D = SRGAN_d_lr_odd(hr_size=hr_shape).to(device)
 
 

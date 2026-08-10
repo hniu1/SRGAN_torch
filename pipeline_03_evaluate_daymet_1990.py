@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 from netCDF4 import Dataset
 
-from srgan_torch import SRGAN_g_lr_patch
+from srgan_torch import SRGAN_g_lr_patch, SRGAN_g_lr_patch_hr_elev
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,6 +28,7 @@ def parser():
     p.add_argument("--version", default="tmax_stage1_patch_pixelshuffle_10yr")
     p.add_argument("--data-version", default="tmax_stage1_patch_10yr_data")
     p.add_argument("--checkpoint", default="g_init.pth", choices=["g_init.pth", "g.pth"])
+    p.add_argument("--generator", choices=["auto", "patch", "patch_hr_elev"], default="auto")
     p.add_argument("--var", default="tmax")
     p.add_argument("--year", type=int, default=1990)
     p.add_argument("--batch-size", type=int, default=32)
@@ -65,14 +66,19 @@ def inverse_scale(values, scaler):
     return scaler.inverse_transform(values.reshape(-1, 1)).reshape(values.shape).astype(np.float32)
 
 
-def load_elevation(base_dir, data_version):
-    path = base_dir / "output" / data_version / "elev_lr_scaled.npy"
+def load_elevation(base_dir, data_version, resolution="lr"):
+    name = "elev_lr_scaled.npy" if resolution == "lr" else "elev_hr_scaled.npy"
+    path = base_dir / "output" / data_version / name
     elev = np.load(path, mmap_mode="r")
-    return np.asarray(elev[0, :, :, 0], dtype=np.float32)
+    if elev.ndim == 4:
+        elev = elev[0, :, :, 0]
+    elif elev.ndim == 3:
+        elev = elev[0]
+    return np.asarray(elev, dtype=np.float32)
 
 
 @torch.inference_mode()
-def predict(model, lr, elevation, scaler, device, batch_size):
+def predict(model, lr, elevation, scaler, device, batch_size, elevation_hr=None):
     predictions = []
     baselines = []
     for start in range(0, len(lr), batch_size):
@@ -81,7 +87,13 @@ def predict(model, lr, elevation, scaler, device, batch_size):
         elev = np.broadcast_to(elevation, lr_scaled.shape)
         inputs = np.stack((lr_scaled, elev), axis=1).copy()
         inputs = torch.from_numpy(inputs).to(device)
-        pred_scaled = model(inputs)
+        if elevation_hr is None:
+            pred_scaled = model(inputs)
+        else:
+            hr_elev = np.broadcast_to(
+                elevation_hr, (stop - start, *elevation_hr.shape)
+            ).copy()
+            pred_scaled = model(inputs, torch.from_numpy(hr_elev[:, None]).to(device))
         baseline_scaled = F.interpolate(
             inputs[:, :1], scale_factor=4, mode="bilinear", align_corners=False
         )
@@ -185,11 +197,27 @@ def main():
 
     with open(model_dir / "scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
-    model = SRGAN_g_lr_patch(in_channels=2).to(device)
+    generator_name = args.generator
+    config_path = args.base_dir / "output" / args.version / "run_config.json"
+    if generator_name == "auto" and config_path.exists():
+        with open(config_path) as f:
+            generator_name = json.load(f).get("generator", "patch")
+    if generator_name == "auto":
+        generator_name = "patch"
+    if generator_name == "patch_hr_elev":
+        model = SRGAN_g_lr_patch_hr_elev(in_channels=2).to(device)
+    else:
+        model = SRGAN_g_lr_patch(in_channels=2).to(device)
     model.load_state_dict(torch.load(model_dir / args.checkpoint, map_location=device))
     model.eval()
     elevation = load_elevation(args.base_dir, args.data_version)
-    pred, baseline = predict(model, lr, elevation, scaler, device, args.batch_size)
+    elevation_hr = (
+        load_elevation(args.base_dir, args.data_version, "hr")
+        if generator_name == "patch_hr_elev" else None
+    )
+    pred, baseline = predict(
+        model, lr, elevation, scaler, device, args.batch_size, elevation_hr
+    )
     if pred.shape != truth.shape:
         raise ValueError(f"Prediction {pred.shape} and truth {truth.shape} differ")
 
@@ -212,6 +240,7 @@ def main():
         "year": args.year,
         "variable": args.var,
         "checkpoint": args.checkpoint,
+        "generator": generator_name,
         "n_days": int(len(pred)),
         "lr_path": str(lr_path),
         "truth_path": str(truth_path),

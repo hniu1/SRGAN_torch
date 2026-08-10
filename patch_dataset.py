@@ -35,6 +35,7 @@ class PatchDaymetDataset(Dataset):
         patches_per_image=1,
         elevation=False,
         elevation_hr=False,
+        return_elevation_hr=False,
         random_patches=True,
     ):
         if split not in ("train", "test"):
@@ -55,6 +56,7 @@ class PatchDaymetDataset(Dataset):
         self.patches_per_image = int(patches_per_image)
         self.elevation = elevation
         self.elevation_hr = elevation_hr
+        self.return_elevation_hr = return_elevation_hr
         self.random_patches = random_patches
 
         self.x = _load_array(os.path.join(path_output, f"x_{split}.npy"))
@@ -73,7 +75,7 @@ class PatchDaymetDataset(Dataset):
         self.elev_hr = None
         if elevation:
             self.elev_lr = _load_array(os.path.join(path_output, "elev_lr_scaled.npy"))
-        if elevation_hr:
+        if elevation_hr or return_elevation_hr:
             self.elev_hr = _load_array(os.path.join(path_output, "elev_hr_scaled.npy"))
 
     @property
@@ -173,5 +175,11 @@ class PatchDaymetDataset(Dataset):
                 self.elev_hr, sample_index, hr_row, hr_col, self.hr_patch_size
             )
             y = np.concatenate([y, elev_hr], axis=0)
+
+        if self.return_elevation_hr:
+            elev_hr = self._elevation_slice(
+                self.elev_hr, sample_index, hr_row, hr_col, self.hr_patch_size
+            )
+            return torch.from_numpy(x), torch.from_numpy(y), torch.from_numpy(elev_hr.copy())
 
         return torch.from_numpy(x), torch.from_numpy(y)
