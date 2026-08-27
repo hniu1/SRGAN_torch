@@ -9,3 +9,7 @@ gcm_ds/
 output/
 models/
 core
+artifacts/
+.pytest_cache/
+archive/
+
