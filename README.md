@@ -5,8 +5,8 @@ This branch trains one terrain-aware transformer to downscale daily `tmin`,
 
 ```text
 Daymet/ERA5 or GCM at 1 degree
-              -> ClimateSwin ->
-joint fields at 0.25 degree
+       -> Stage-1 ClimateSwin (4x) -> 0.25 degree
+       -> Stage-2 ClimateSwin (6x) -> 1/24 degree
 ```
 
 ClimateSwin uses a shared variable-aware SwinV2 encoder, shifted-window
@@ -44,6 +44,53 @@ MV_BASE_DIR   repository path; defaults to the submission directory
 MV_DATA_DIR   prepared dataset directory
 MV_RUN_DIR    checkpoints, history, predictions, and metrics
 ```
+
+## Stage 2: 0.25 degree to 1/24 degree
+
+Stage 2 keeps the variable-aware SwinV2 representation backbone, but does not
+reuse the 4x reconstruction head unchanged. It uses a 2x PixelShuffle stage
+followed by a 3x stage, fusing native 1/24-degree terrain at both scales. The
+default patch is deliberately smaller because a 12x12 LR context reconstructs
+a 72x72 HR field; the central 8x8 LR / 48x48 HR region is supervised.
+
+| Step | Entry point | Frontier launcher |
+|---:|---|---|
+| 5 | `pipeline_05_prepare_stage2.py` | `slurm/05_prepare_stage2.slurm` |
+| 6 | `pipeline_06_train_stage2.py` | `slurm/06_train_stage2.slurm` |
+| 7 | `pipeline_07_evaluate_stage2.py` | `slurm/07_evaluate_stage2.slurm` |
+| 8 | `pipeline_08_downscale_stage2.py` | `slurm/08_downscale_stage2.slurm` |
+
+Submit preparation, training, and evaluation in dependency order with:
+
+```bash
+bash submit_stage2_pipeline.sh
+```
+
+The preparation step validates all paired files but does not copy the roughly
+200 GB uncompressed daily archive. It writes a lightweight manifest, time
+indexes, coordinates, and LR/HR terrain arrays. Each worker opens the three
+variables independently and reads only the aligned LR and HR patch requested
+for that sample. Missing values are masked, finite negative precipitation is
+clamped to zero, and Kelvin temperature sources are converted to Celsius on
+read.
+
+The input is `*_0p25deg.nc` and the fine-resolution truth is `*_trim.nc`. The
+archive's `*_0p25degto0p0416deg.nc` files are pre-interpolated coarse fields;
+they are useful as a baseline, but are deliberately not used as training
+targets.
+
+The Stage-2 launcher warm-starts the compatible variable stem, seasonal/static
+fusion, and Swin encoder from `artifacts/runs/climateswin_v1/best.pt`. The 6x
+upsampling stages and variable decoders start fresh; use `MV_STAGE1_CHECKPOINT`
+to choose another source checkpoint. Use `MV_STAGE2_RESUME` to resume a Stage-2
+checkpoint instead. Stage-2 paths can be overridden with `MV_STAGE2_DATA_DIR`
+and `MV_STAGE2_RUN_DIR`.
+
+Initial training uses observed paired 0.25-degree fields as inputs and
+1/24-degree fields as targets, which measures the isolated second-stage skill.
+For the strongest final 1-degree-to-1/24-degree cascade, a later fine-tuning
+round should mix in Stage-1-generated 0.25-degree inputs to reduce the small
+train/inference distribution shift.
 
 Step 4 is intentionally not included in `submit_pipeline.sh`: it produces a
 multi-decade GCM dataset and should be submitted only after the independent
@@ -139,7 +186,8 @@ to attention-window multiples and the padding is removed before reconstruction.
    LR grid cell.
 3. Residual SwinV2 groups learn spatial relationships using 8x8 shifted
    windows.
-4. Two PixelShuffle stages reconstruct the 4x grid.
+4. Two PixelShuffle stages reconstruct the grid: 2x + 2x for Stage 1, or 2x +
+   3x for Stage 2.
 5. HR elevation, elevation anomaly, coordinates, and the valid-data mask are
    fused during reconstruction.
 6. Variable-specific decoders predict corrections to bilinearly upscaled input

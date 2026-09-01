@@ -13,12 +13,16 @@ from climate_downscaling.data import FullFieldDataset, MultivariablePatchDataset
 from climate_downscaling.losses import MultivariableLoss
 from climate_downscaling.model import ClimateSwin, ClimateSwinConfig
 from climate_downscaling.prepare import prepare_dataset, read_variable_diagnostics
+from climate_downscaling.stage2_data import Stage2FullFieldDataset, Stage2NetCDFPatchDataset
+from climate_downscaling.stage2_prepare import prepare_stage2_index
 from climate_downscaling.transforms import (
     TransformSpec,
     forward_numpy,
     inverse_numpy,
     specs_from_manifest,
 )
+from pipeline_02_train_mvswin import initialize_backbone, recover_early_stop_patience
+from utility_plot_spatial_statistics import create_spatial_comparison_plots
 
 
 VARIABLES = ("tmin", "tmax", "prcp")
@@ -106,12 +110,78 @@ def create_synthetic_dataset(path: Path) -> dict:
     return manifest
 
 
+def create_synthetic_stage2(path: Path) -> Path:
+    source = path / "source"
+    dem = path / "dem"
+    prepared = path / "prepared"
+    lr_shape = (4, 5)
+    hr_shape = (24, 30)
+    transforms = {
+        "tmin": TransformSpec("tmin", "standard", 0.0, 10.0),
+        "tmax": TransformSpec("tmax", "standard", 5.0, 10.0),
+        "prcp": TransformSpec("prcp", "log1p_standard", 0.5, 0.75),
+    }
+    stage1_manifest = path / "stage1_manifest.json"
+    stage1_manifest.write_text(json.dumps({
+        "transforms": {name: spec.to_dict() for name, spec in transforms.items()}
+    }))
+    for variable_index, variable in enumerate(VARIABLES):
+        units = "K" if variable in {"tmin", "tmax"} else "mm/dy"
+        for year in (2000, 2001, 2002):
+            if variable == "tmin":
+                lr = np.full((2, *lr_shape), 273.15, dtype=np.float32)
+            elif variable == "tmax":
+                lr = np.full((2, *lr_shape), 283.15, dtype=np.float32)
+            else:
+                lr = np.full((2, *lr_shape), 2.0, dtype=np.float32)
+            hr = np.repeat(np.repeat(lr, 6, axis=-2), 6, axis=-1)
+            if variable == "prcp":
+                lr[0, 0, 0] = -2.0
+                hr[0, 0, 0] = np.nan
+            create_source_netcdf(
+                source / f"Daymet_ERA5_{variable}_dy_{year}_0p25deg.nc",
+                variable, lr, units,
+            )
+            create_source_netcdf(
+                source / f"Daymet_ERA5_{variable}_dy_{year}_trim.nc",
+                variable, hr, units,
+            )
+    create_dem_netcdf(
+        dem / "VICa_DEM_0p25deg_fill0.nc", np.ones(lr_shape, dtype=np.float32)
+    )
+    create_dem_netcdf(
+        dem / "VICa_DEM_trim_fill0.nc", np.ones(hr_shape, dtype=np.float32)
+    )
+    prepare_stage2_index(
+        prepared,
+        VARIABLES,
+        {"train": [2000], "val": [2001], "test": [2002]},
+        stage1_manifest,
+        source,
+        dem,
+    )
+    return prepared
+
+
 class TransformTests(unittest.TestCase):
     def test_precipitation_round_trip(self) -> None:
         spec = TransformSpec("prcp", "log1p_standard", 0.5, 0.75)
         values = np.asarray([0.0, 1.0, 15.0], dtype=np.float32)
         restored = inverse_numpy(forward_numpy(values, spec), spec)
         np.testing.assert_allclose(restored, values, rtol=1e-5, atol=1e-5)
+
+    def test_resume_recovers_early_stop_patience(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            history = Path(directory) / "history.jsonl"
+            records = [
+                {"epoch": epoch, "validation": {"total": value}}
+                for epoch, value in enumerate((0.5, 0.4, 0.41, 0.42, 0.43))
+            ]
+            history.write_text("\n".join(json.dumps(record) for record in records))
+            checkpoint = {"epoch": 4, "best_validation": 0.4}
+            self.assertEqual(recover_early_stop_patience(history, checkpoint), 3)
+            checkpoint["early_stop_patience_count"] = 7
+            self.assertEqual(recover_early_stop_patience(history, checkpoint), 7)
 
 
 class DatasetTests(unittest.TestCase):
@@ -138,6 +208,46 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(dataset.variable_names, ("prcp", "tmin"))
             self.assertEqual(tuple(dataset[0]["lr"].shape), (2, 8, 10))
             self.assertTrue(all(isinstance(array, np.memmap) for array in dataset.lr))
+
+    def test_stage2_lazy_patch_and_full_field(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            prepared = create_synthetic_stage2(Path(directory))
+            patch = Stage2NetCDFPatchDataset(
+                prepared, "val", core_size=2, halo=1,
+                patches_per_day=2, random_patches=False,
+            )[0]
+            self.assertEqual(tuple(patch["lr"].shape), (3, 4, 4))
+            self.assertEqual(tuple(patch["target"].shape), (3, 24, 24))
+            self.assertEqual(tuple(patch["static_hr"].shape), (4, 24, 24))
+
+            full = Stage2FullFieldDataset(prepared, "test")
+            sample = full[0]
+            self.assertEqual(tuple(sample["lr"].shape), (3, 4, 5))
+            self.assertEqual(tuple(sample["target_raw"].shape), (3, 24, 30))
+            self.assertAlmostEqual(float(sample["lr_raw"][0, 0, 0]), 0.0, places=4)
+            self.assertEqual(float(sample["lr_raw"][2, 0, 0]), 0.0)
+            self.assertEqual(float(sample["valid_hr"][0, 0, 0]), 0.0)
+
+    def test_spatial_comparison_plots(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            create_synthetic_dataset(root / "data")
+            prediction_path = root / "predictions.npy"
+            predictions = np.lib.format.open_memmap(
+                prediction_path, mode="w+", dtype=np.float32, shape=(2, 3, 32, 40)
+            )
+            for channel, name in enumerate(VARIABLES):
+                predictions[:, channel] = np.load(
+                    root / "data" / "variables" / name / "hr_test.npy"
+                )
+            predictions.flush()
+            paths = create_spatial_comparison_plots(
+                root / "data", prediction_path, root / "evaluation", "test", VARIABLES, 2
+            )
+            self.assertEqual(len(paths), 7)
+            self.assertTrue(all(path.exists() for path in paths))
+            statistics = np.load(root / "evaluation" / "spatial_statistics_1990.npz")
+            np.testing.assert_allclose(statistics["mean_tmin_difference"], 0.0)
 
 
 class PreparationTests(unittest.TestCase):
@@ -223,6 +333,35 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(tuple(prediction.shape), (2, 3, 52, 68))
         torch.testing.assert_close(prediction, baseline)
         prediction.mean().backward()
+
+    def test_sixfold_reconstruction_and_backbone_initialization(self) -> None:
+        common = dict(
+            embed_dim=24, num_groups=1, blocks_per_group=2,
+            num_heads=4, window_size=4, variable_dropout=0.0, drop_path=0.0,
+        )
+        source = ClimateSwin(ClimateSwinConfig(scale_factor=4, **common))
+        target = ClimateSwin(ClimateSwinConfig(scale_factor=6, **common))
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "stage1.pt"
+            torch.save({
+                "model": source.state_dict(),
+                "model_config": source.config.to_dict(),
+            }, checkpoint)
+            result = initialize_backbone(target, checkpoint)
+        self.assertGreater(result["loaded_tensors"], 0)
+        torch.testing.assert_close(
+            target.variable_stem.stems[0].weight,
+            source.variable_stem.stems[0].weight,
+        )
+
+        dynamic = torch.randn(1, 3, 7, 9)
+        static_lr = torch.randn(1, 4, 7, 9)
+        static_hr = torch.randn(1, 4, 42, 54)
+        season = torch.randn(1, 2)
+        prediction = target(dynamic, static_lr, static_hr, season)
+        baseline = F.interpolate(dynamic, scale_factor=6, mode="bilinear", align_corners=False)
+        self.assertEqual(tuple(prediction.shape), (1, 3, 42, 54))
+        torch.testing.assert_close(prediction, baseline)
 
     def test_loss_is_finite_and_differentiable(self) -> None:
         manifest = {"transforms": {

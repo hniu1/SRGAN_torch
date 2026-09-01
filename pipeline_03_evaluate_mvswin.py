@@ -16,6 +16,19 @@ from torch.utils.data import DataLoader
 from climate_downscaling.data import FullFieldDataset
 from climate_downscaling.model import ClimateSwin, ClimateSwinConfig, count_parameters
 from climate_downscaling.transforms import inverse_channels_numpy
+from utility_plot_spatial_statistics import create_spatial_comparison_plots
+
+
+def load_evaluation_dataset(data_dir: Path, split: str, variable_names: tuple[str, ...]):
+    manifest = json.loads((Path(data_dir) / "manifest.json").read_text())
+    layout = manifest.get("storage_layout")
+    if layout == "variable_separable_npy":
+        return FullFieldDataset(data_dir, split=split, variable_names=variable_names), layout
+    if layout == "netcdf_patch_index":
+        from climate_downscaling.stage2_data import Stage2FullFieldDataset
+
+        return Stage2FullFieldDataset(data_dir, split=split, variable_names=variable_names), layout
+    raise ValueError(f"Unsupported evaluation storage layout: {layout!r}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,8 +105,8 @@ def main() -> None:
     device = torch.device("cuda", 0) if torch.cuda.is_available() else torch.device("cpu")
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     config = ClimateSwinConfig.from_dict(checkpoint["model_config"])
-    dataset = FullFieldDataset(
-        args.data_dir, split=args.split, variable_names=config.variable_names
+    dataset, storage_layout = load_evaluation_dataset(
+        args.data_dir, args.split, config.variable_names
     )
     model = ClimateSwin(config).to(device)
     model.load_state_dict(checkpoint["model"])
@@ -117,7 +130,7 @@ def main() -> None:
             shape=(total_days, len(config.variable_names), *dataset.hr_shape),
         )
 
-    valid = np.asarray(dataset.static_hr[-1] > 0.5)
+    default_valid = np.asarray(dataset.static_hr[-1] > 0.5)
     accumulator = ErrorAccumulator(config.variable_names)
     order_violations = 0
     valid_temperature_cells = 0
@@ -140,12 +153,17 @@ def main() -> None:
                 normalized_prediction = model(dynamic, static_lr, static_hr, season)
             normalized_prediction = normalized_prediction.float().cpu().numpy()
             target_raw = batch["target_raw"][:batch_count].numpy()
+            valid_batch = batch.get("valid_hr")
             lr_raw = batch["lr_raw"][:batch_count].to(device)
             baseline_raw = F.interpolate(
                 lr_raw, scale_factor=config.scale_factor, mode="bilinear", align_corners=False
             ).cpu().numpy()
 
             for batch_index in range(batch_count):
+                valid = (
+                    valid_batch[batch_index, 0].numpy() > 0.5
+                    if valid_batch is not None else default_valid
+                )
                 prediction_raw = inverse_channels_numpy(
                     normalized_prediction[batch_index], config.variable_names, dataset.specs
                 )
@@ -173,6 +191,7 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "data_dir": str(args.data_dir),
         "split": args.split,
+        "storage_layout": storage_layout,
         "days": output_index,
         "variables": list(config.variable_names),
         "variable_metadata": dataset.manifest.get("variable_metadata", {}),
@@ -183,7 +202,19 @@ def main() -> None:
         ),
         "temperature_order_enforced": args.enforce_temperature_order,
     }
-    (args.output_dir / "evaluation_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    summary_path = args.output_dir / "evaluation_summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2) + "\n")
+    if predictions is not None and output_index > 0 and storage_layout == "variable_separable_npy":
+        plot_paths = create_spatial_comparison_plots(
+            data_dir=args.data_dir,
+            predictions_path=args.output_dir / "predictions.npy",
+            output_dir=args.output_dir,
+            split=args.split,
+            variable_names=config.variable_names,
+            days=output_index,
+        )
+        summary["spatial_comparison_plots"] = [str(path) for path in plot_paths]
+    summary_path.write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2), flush=True)
 
 

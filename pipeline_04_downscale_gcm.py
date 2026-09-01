@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply a trained joint ClimateSwin checkpoint to aligned 1-degree GCM fields."""
+"""Apply a trained joint ClimateSwin checkpoint to aligned coarse climate fields."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from climate_downscaling.data import FullFieldDataset, load_manifest
+from climate_downscaling.data import FullFieldDataset
 from climate_downscaling.model import ClimateSwin, ClimateSwinConfig
 from climate_downscaling.transforms import (
     inverse_channels_numpy,
@@ -86,6 +86,7 @@ class NetcdfWriter:
         start_date: dt.date,
         source_paths: dict[str, Path],
         variable_metadata: dict,
+        scale_factor: int,
     ) -> None:
         try:
             from netCDF4 import Dataset
@@ -116,7 +117,7 @@ class NetcdfWriter:
                 variable.training_long_name = str(variable_metadata[name].get("long_name", name))
             variable.source_file = str(source_paths[name])
             self.variables[name] = variable
-        self.dataset.model = "ClimateSwin joint multivariable 4x downscaler"
+        self.dataset.model = f"ClimateSwin joint multivariable {scale_factor}x downscaler"
 
     def write(self, start: int, values: np.ndarray) -> None:
         for channel, (name, variable) in enumerate(self.variables.items()):
@@ -130,7 +131,7 @@ class NetcdfWriter:
 def main() -> None:
     args = build_parser().parse_args()
     input_paths = parse_inputs(args.input)
-    manifest = load_manifest(args.data_dir)
+    manifest = json.loads((args.data_dir / "manifest.json").read_text())
     specs = specs_from_manifest(manifest)
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     config = ClimateSwinConfig.from_dict(checkpoint["model_config"])
@@ -145,9 +146,18 @@ def main() -> None:
     model.load_state_dict(checkpoint["model"])
     model.eval()
 
-    static_source = FullFieldDataset(
-        args.data_dir, split="test", variable_names=config.variable_names
-    )
+    if manifest.get("storage_layout") == "variable_separable_npy":
+        static_source = FullFieldDataset(
+            args.data_dir, split="test", variable_names=config.variable_names
+        )
+    elif manifest.get("storage_layout") == "netcdf_patch_index":
+        from climate_downscaling.stage2_data import Stage2FullFieldDataset
+
+        static_source = Stage2FullFieldDataset(
+            args.data_dir, split="test", variable_names=config.variable_names
+        )
+    else:
+        raise ValueError(f"Unsupported inference storage layout: {manifest.get('storage_layout')!r}")
     static_lr = torch.from_numpy(static_source.static_lr)[None].to(device)
     static_hr = torch.from_numpy(static_source.static_hr)[None].to(device)
     lr_shape = tuple(int(v) for v in manifest["lr_shape"])
@@ -183,6 +193,7 @@ def main() -> None:
                 args.output, config.variable_names, count, *hr_shape,
                 start_date + dt.timedelta(days=args.start_index), input_paths,
                 manifest.get("variable_metadata", {}),
+                config.scale_factor,
             )
         try:
             output_index = 0

@@ -30,11 +30,31 @@ from climate_downscaling.model import ClimateSwin, ClimateSwinConfig, count_para
 from climate_downscaling.transforms import specs_from_manifest
 
 
+def load_training_layout(data_dir: Path):
+    raw = json.loads((Path(data_dir) / "manifest.json").read_text())
+    layout = raw.get("storage_layout")
+    if layout == "variable_separable_npy":
+        return load_manifest(data_dir), MultivariablePatchDataset
+    if layout == "netcdf_patch_index":
+        from climate_downscaling.stage2_data import (
+            Stage2NetCDFPatchDataset,
+            load_stage2_manifest,
+        )
+
+        return load_stage2_manifest(data_dir), Stage2NetCDFPatchDataset
+    raise ValueError(f"Unsupported training storage layout: {layout!r}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_mv_1980_1990"))
     parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/climateswin_v1"))
-    parser.add_argument("--resume", type=Path)
+    checkpoint_group = parser.add_mutually_exclusive_group()
+    checkpoint_group.add_argument("--resume", type=Path)
+    checkpoint_group.add_argument(
+        "--init-backbone", type=Path,
+        help="Warm-start compatible encoder/fusion weights; optimizer and upsampling head start fresh",
+    )
     parser.add_argument(
         "--variables", nargs="+",
         help="Prepared variables to train, in channel order (default: every manifest variable)",
@@ -114,6 +134,66 @@ def unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
     return model.module if isinstance(model, DistributedDataParallel) else model
 
 
+def initialize_backbone(model: torch.nn.Module, checkpoint_path: Path) -> dict:
+    """Load matching Stage-1 representation weights, excluding scale-specific heads."""
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    source_config = ClimateSwinConfig.from_dict(checkpoint["model_config"])
+    target = unwrap_model(model)
+    if source_config.variable_names != target.config.variable_names:
+        raise ValueError(
+            "Backbone checkpoint variables do not match: "
+            f"{source_config.variable_names} != {target.config.variable_names}"
+        )
+    prefixes = (
+        "variable_stem.",
+        "static_lr_stem.",
+        "season_embedding.",
+        "shallow.",
+        "groups.",
+        "encoder_output.",
+    )
+    target_state = target.state_dict()
+    transferred = {
+        name: value
+        for name, value in checkpoint["model"].items()
+        if name.startswith(prefixes)
+        and name in target_state
+        and target_state[name].shape == value.shape
+    }
+    if not transferred:
+        raise ValueError(f"No compatible backbone weights found in {checkpoint_path}")
+    target.load_state_dict(transferred, strict=False)
+    transferable = [name for name in target_state if name.startswith(prefixes)]
+    return {
+        "checkpoint": str(checkpoint_path),
+        "source_scale_factor": source_config.scale_factor,
+        "loaded_tensors": len(transferred),
+        "eligible_tensors": len(transferable),
+        "skipped_tensors": len(transferable) - len(transferred),
+    }
+
+
+def recover_early_stop_patience(history_path: Path, checkpoint: dict) -> int:
+    if "early_stop_patience_count" in checkpoint:
+        return int(checkpoint["early_stop_patience_count"])
+    if not history_path.exists():
+        return 0
+    best_validation = float(checkpoint["best_validation"])
+    checkpoint_epoch = int(checkpoint["epoch"])
+    patience = 0
+    records = [
+        json.loads(line) for line in history_path.read_text().splitlines()
+        if line.strip()
+    ]
+    for record in reversed(records):
+        if int(record["epoch"]) > checkpoint_epoch:
+            continue
+        if float(record["validation"]["total"]) <= best_validation + 1e-12:
+            break
+        patience += 1
+    return patience
+
+
 def save_checkpoint(
     path: Path,
     model: torch.nn.Module,
@@ -121,6 +201,7 @@ def save_checkpoint(
     scheduler: torch.optim.lr_scheduler.LRScheduler,
     epoch: int,
     best_validation: float,
+    early_stop_patience_count: int,
     model_config: ClimateSwinConfig,
     data_manifest: dict,
 ) -> None:
@@ -129,6 +210,7 @@ def save_checkpoint(
         {
             "epoch": epoch,
             "best_validation": best_validation,
+            "early_stop_patience_count": early_stop_patience_count,
             "model": unwrap_model(model).state_dict(),
             "optimizer": optimizer.state_dict(),
             "scheduler": scheduler.state_dict(),
@@ -185,7 +267,7 @@ def main() -> None:
     context = initialize_distributed()
     try:
         seed_everything(args.seed + context.rank)
-        manifest = load_manifest(args.data_dir)
+        manifest, patch_dataset_class = load_training_layout(args.data_dir)
         variables = tuple(args.variables or manifest["variables"])
         config = ClimateSwinConfig(
             variable_names=variables,
@@ -199,7 +281,7 @@ def main() -> None:
             variable_dropout=args.variable_dropout,
             drop_path=args.drop_path,
         )
-        train_dataset = MultivariablePatchDataset(
+        train_dataset = patch_dataset_class(
             args.data_dir,
             split="train",
             core_size=args.core_size,
@@ -208,7 +290,7 @@ def main() -> None:
             random_patches=True,
             variable_names=variables,
         )
-        validation_dataset = MultivariablePatchDataset(
+        validation_dataset = patch_dataset_class(
             args.data_dir,
             split="val",
             core_size=args.core_size,
@@ -226,6 +308,16 @@ def main() -> None:
         )
 
         model = ClimateSwin(config).to(context.device)
+        backbone_initialization = None
+        if args.init_backbone:
+            backbone_initialization = initialize_backbone(model, args.init_backbone)
+            if context.is_main:
+                print(
+                    "Initialized Stage-2 representation from "
+                    f"{args.init_backbone}: {backbone_initialization['loaded_tensors']}/"
+                    f"{backbone_initialization['eligible_tensors']} tensors",
+                    flush=True,
+                )
         if distributed:
             device_ids = [context.device.index] if context.device.type == "cuda" else None
             model = DistributedDataParallel(model, device_ids=device_ids)
@@ -244,8 +336,10 @@ def main() -> None:
             lr_lambda=lambda epoch: learning_rate_multiplier(epoch, args.warmup_epochs, args.epochs),
         )
 
+        history_path = args.run_dir / "history.jsonl"
         start_epoch = 0
         best_validation = float("inf")
+        patience = 0
         if args.resume:
             checkpoint = torch.load(args.resume, map_location="cpu", weights_only=False)
             if checkpoint["model_config"] != config.to_dict():
@@ -255,6 +349,13 @@ def main() -> None:
             scheduler.load_state_dict(checkpoint["scheduler"])
             start_epoch = int(checkpoint["epoch"]) + 1
             best_validation = float(checkpoint["best_validation"])
+            patience = recover_early_stop_patience(history_path, checkpoint)
+            if context.is_main:
+                print(
+                    f"Resuming after epoch {start_epoch - 1}; "
+                    f"best_validation={best_validation:.8f}; patience={patience}",
+                    flush=True,
+                )
 
         if context.is_main:
             args.run_dir.mkdir(parents=True, exist_ok=True)
@@ -263,6 +364,8 @@ def main() -> None:
                 "data_dir": str(args.data_dir),
                 "run_dir": str(args.run_dir),
                 "resume": str(args.resume) if args.resume else None,
+                "init_backbone": str(args.init_backbone) if args.init_backbone else None,
+                "backbone_initialization": backbone_initialization,
                 "model": config.to_dict(),
                 "parameters": count_parameters(unwrap_model(model)),
                 "world_size": context.world_size,
@@ -271,8 +374,6 @@ def main() -> None:
             print(json.dumps(run_config, indent=2), flush=True)
         barrier()
 
-        history_path = args.run_dir / "history.jsonl"
-        patience = 0
         for epoch in range(start_epoch, args.epochs):
             if train_sampler is not None:
                 train_sampler.set_epoch(epoch)
@@ -304,12 +405,12 @@ def main() -> None:
                     stream.write(json.dumps(record) + "\n")
                 save_checkpoint(
                     args.run_dir / "last.pt", model, optimizer, scheduler, epoch,
-                    best_validation, config, manifest,
+                    best_validation, patience, config, manifest,
                 )
                 if improved:
                     save_checkpoint(
                         args.run_dir / "best.pt", model, optimizer, scheduler, epoch,
-                        best_validation, config, manifest,
+                        best_validation, patience, config, manifest,
                     )
                 print(json.dumps(record), flush=True)
             stop = patience >= args.early_stop_patience

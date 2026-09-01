@@ -304,6 +304,7 @@ class FullFieldDataset(Dataset):
             "target_raw": torch.from_numpy(target_raw.copy()),
             "static_lr": torch.from_numpy(self.static_lr.copy()),
             "static_hr": torch.from_numpy(self.static_hr.copy()),
+            "valid_hr": torch.from_numpy(self.static_hr[-1:].copy()),
             "season": torch.tensor([math.sin(phase), math.cos(phase)], dtype=torch.float32),
             "time": torch.from_numpy(np.asarray(self.time[index], dtype=np.int16).copy()),
         }

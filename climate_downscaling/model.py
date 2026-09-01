@@ -31,8 +31,14 @@ class ClimateSwinConfig:
             raise ValueError("At least one variable is required")
         if self.embed_dim % self.num_heads:
             raise ValueError("embed_dim must be divisible by num_heads")
-        if self.scale_factor < 1 or self.scale_factor & (self.scale_factor - 1):
-            raise ValueError("scale_factor must be a positive power of two")
+        if self.scale_factor < 1:
+            raise ValueError("scale_factor must be positive")
+        remainder = self.scale_factor
+        for factor in (2, 3):
+            while remainder % factor == 0:
+                remainder //= factor
+        if remainder != 1:
+            raise ValueError("scale_factor must factor into PixelShuffle stages of 2 and/or 3")
         if not 0.0 <= self.variable_dropout < 1.0:
             raise ValueError("variable_dropout must be in [0, 1)")
 
@@ -279,9 +285,10 @@ class VariableAwareStem(nn.Module):
 
 
 class UpsampleFusionStage(nn.Module):
-    def __init__(self, dim: int, terrain_channels: int) -> None:
+    def __init__(self, dim: int, terrain_channels: int, factor: int = 2) -> None:
         super().__init__()
-        self.expand = nn.Conv2d(dim, dim * 4, 3, padding=1)
+        self.factor = int(factor)
+        self.expand = nn.Conv2d(dim, dim * self.factor * self.factor, 3, padding=1)
         self.fusion = nn.Sequential(
             nn.Conv2d(dim + terrain_channels, dim, 3, padding=1),
             nn.GELU(),
@@ -289,7 +296,7 @@ class UpsampleFusionStage(nn.Module):
         )
 
     def forward(self, x: torch.Tensor, terrain: torch.Tensor) -> torch.Tensor:
-        x = F.pixel_shuffle(self.expand(x), 2)
+        x = F.pixel_shuffle(self.expand(x), self.factor)
         terrain = F.interpolate(terrain, size=x.shape[-2:], mode="bilinear", align_corners=False)
         return x + self.fusion(torch.cat([x, terrain], dim=1))
 
@@ -336,9 +343,14 @@ class ClimateSwin(nn.Module):
         self.encoder_output = nn.Conv2d(config.embed_dim, config.embed_dim, 3, padding=1)
 
         terrain_channels = config.static_hr_channels + 1  # HR predictors plus elevation anomaly
-        stages = int(math.log2(config.scale_factor))
+        stages = []
+        remainder = config.scale_factor
+        for factor in (2, 3):
+            while remainder % factor == 0:
+                stages.append(factor)
+                remainder //= factor
         self.upsampling = nn.ModuleList([
-            UpsampleFusionStage(config.embed_dim, terrain_channels) for _ in range(stages)
+            UpsampleFusionStage(config.embed_dim, terrain_channels, factor) for factor in stages
         ])
         self.decoders = nn.ModuleList([VariableDecoder(config.embed_dim) for _ in config.variable_names])
 
