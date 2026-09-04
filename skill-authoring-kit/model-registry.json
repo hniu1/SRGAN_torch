@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "repository_model_family": "ClimateSwin",
+  "variables": ["tmin", "tmax", "prcp"],
+  "models": {
+    "stage1": {
+      "task": "1_degree_to_0.25_degree",
+      "scale_factor": 4,
+      "input_shape": [57, 129],
+      "output_shape": [228, 516],
+      "manifest": "artifacts/data/daymet_mv_1980_1990/manifest.json",
+      "checkpoint": "artifacts/runs/climateswin_v1/best.pt",
+      "checkpoint_bytes": 58014535,
+      "checkpoint_sha256": "8cf9d671b226ffb905f00e77c83db93a48bb6ac930425fb12b9df8cb8882878e",
+      "evaluation": {
+        "dataset": "held-out Daymet 1990 test split",
+        "days": 365,
+        "temperature_order_enforced": true,
+        "summary": "artifacts/runs/climateswin_v1/test_1990/evaluation_summary.json",
+        "metrics": {
+          "tmin": {"bias": -0.0042387087, "mae": 0.2097493011, "rmse": 0.4507143290, "mae_improvement_percent": 59.77779368},
+          "tmax": {"bias": 0.0047896796, "mae": 0.2007328917, "rmse": 0.4306459803, "mae_improvement_percent": 59.82354068},
+          "prcp": {"bias": -0.0045695090, "mae": 0.2784479399, "rmse": 0.9911572846, "mae_improvement_percent": 38.55139460}
+        }
+      }
+    },
+    "stage2": {
+      "task": "0.25_degree_to_1_over_24_degree",
+      "scale_factor": 6,
+      "input_shape": [228, 516],
+      "output_shape": [1368, 3096],
+      "manifest": "artifacts/data/daymet_mv_stage2_1980_1990/manifest.json",
+      "checkpoint": "artifacts/runs/climateswin_stage2_v1/best.pt",
+      "checkpoint_bytes": 62997447,
+      "checkpoint_sha256": "2e37007658d207cf267dc867dc33890649a36c5c753d03e8810504c5f499a01a",
+      "evaluation": {
+        "dataset": "held-out Daymet 1990 test split with true 0.25-degree inputs",
+        "days": 365,
+        "temperature_order_enforced": true,
+        "summary": "artifacts/runs/climateswin_stage2_v1/test_1990/evaluation_summary.json",
+        "metrics": {
+          "tmin": {"bias": -0.0010207574, "mae": 0.0496619460, "rmse": 0.1679773341, "mae_improvement_percent": 75.37006386},
+          "tmax": {"bias": 0.0013884198, "mae": 0.0487329036, "rmse": 0.1534709951, "mae_improvement_percent": 75.77649000},
+          "prcp": {"bias": -0.0009433570, "mae": 0.0495351475, "rmse": 0.3137397629, "mae_improvement_percent": 63.21769547}
+        }
+      }
+    },
+    "cascade": {
+      "task": "1_degree_to_1_over_24_degree",
+      "scale_factor": 24,
+      "stages": ["stage1", "stage2"],
+      "evaluation": null,
+      "evaluation_note": "End-to-end cascade performance has not been established by the two single-stage held-out evaluations."
+    }
+  }
+}

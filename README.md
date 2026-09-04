@@ -224,6 +224,15 @@ or netCDF4:
 /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm/bin/python -m unittest discover -s tests -v
 ```
 
+## Agent integration
+
+Two complementary packages support agentic use of the pipeline:
+
+- [`skill-authoring-kit`](skill-authoring-kit/README.md) contains framework-neutral capability, data, interface, permission, schema, registry, and template documents for teams building their own agent skills.
+- [`skills`](skills/) contains ready-to-use skills for inference, evaluation/visualization, and Frontier operations.
+
+Keep these capabilities separate so read-only inspection does not imply authorization to submit jobs, cancel jobs, overwrite artifacts, or delete data.
+
 ## Legacy baseline
 
 The previous SRGAN source, launchers, documentation, utilities, generated

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/climateswin/downscaling-result.schema.json",
+  "title": "ClimateSwin agent result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "action", "stage", "status", "warnings", "errors"],
+  "properties": {
+    "request_id": {"type": "string", "minLength": 1},
+    "action": {"enum": ["validate", "infer", "evaluate", "status", "submit", "resume", "cancel"]},
+    "stage": {"enum": ["stage1", "stage2", "cascade"]},
+    "status": {"enum": ["validated", "submitted", "running", "succeeded", "failed", "blocked", "cancelled"]},
+    "started_at": {"type": ["string", "null"], "format": "date-time"},
+    "finished_at": {"type": ["string", "null"], "format": "date-time"},
+    "resolved_inputs": {"type": "object", "additionalProperties": {"type": "string"}},
+    "manifests": {"type": "array", "items": {"type": "string"}},
+    "checkpoints": {"type": "array", "items": {"type": "string"}},
+    "commands": {"type": "array", "items": {"type": "string"}},
+    "job_ids": {"type": "array", "items": {"type": "string", "pattern": "^[0-9]+$"}},
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tmin": {"$ref": "#/$defs/variable_metrics"},
+        "tmax": {"$ref": "#/$defs/variable_metrics"},
+        "prcp": {"$ref": "#/$defs/variable_metrics"}
+      }
+    },
+    "temperature_order_enforced": {"type": "boolean"},
+    "temperature_order_violation_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind"],
+        "properties": {
+          "path": {"type": "string"},
+          "kind": {"enum": ["netcdf", "npy", "checkpoint", "metrics", "plot", "log", "manifest"]},
+          "bytes": {"type": "integer", "minimum": 0},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "variable_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["units", "bias", "mae", "rmse", "count"],
+      "properties": {
+        "units": {"type": "string"},
+        "bias": {"type": "number"},
+        "mae": {"type": "number", "minimum": 0},
+        "rmse": {"type": "number", "minimum": 0},
+        "bilinear_mae": {"type": "number", "minimum": 0},
+        "mae_improvement_percent": {"type": "number"},
+        "count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

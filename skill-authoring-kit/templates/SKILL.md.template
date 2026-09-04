@@ -1,0 +1,26 @@
+---
+name: climate-capability-name
+description: Describe the exact capability, concrete triggers, and important exclusions in one paragraph.
+---
+
+# Capability title
+
+State the outcome this skill produces and the scientific or operational boundary it owns.
+
+## Workflow
+
+1. Identify the requested stage, artifact identities, and action.
+2. Read only the reference documents needed for this action.
+3. Validate structured inputs before constructing a command.
+4. Obtain explicit approval immediately before any state-changing action.
+5. Execute or inspect, then verify artifacts and record provenance.
+
+## Guardrails
+
+- List data, model, and permission invariants here.
+- Distinguish successful execution from scientific validation.
+- Redirect out-of-scope work to a separately named capability.
+
+## Output
+
+Define the minimum structured result fields and the limitations that must accompany them.

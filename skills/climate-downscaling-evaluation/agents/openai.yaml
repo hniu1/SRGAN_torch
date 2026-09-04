@@ -1,0 +1,4 @@
+interface:
+  display_name: "Downscaling Evaluation"
+  short_description: "Evaluate and visualize downscaled climate fields"
+  default_prompt: "Use $climate-downscaling-evaluation to evaluate a checkpoint against Daymet."

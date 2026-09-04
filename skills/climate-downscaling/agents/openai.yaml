@@ -1,0 +1,4 @@
+interface:
+  display_name: "Climate Downscaling"
+  short_description: "Run joint multivariable climate downscaling"
+  default_prompt: "Use $climate-downscaling to validate and downscale aligned climate inputs."

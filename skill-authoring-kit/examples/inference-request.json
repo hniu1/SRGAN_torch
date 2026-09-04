@@ -1,0 +1,18 @@
+{
+  "request_id": "example-stage1-1990",
+  "action": "infer",
+  "stage": "stage1",
+  "inputs": {
+    "tmin": "/data/model_tmin_1990.nc",
+    "tmax": "/data/model_tmax_1990.nc",
+    "prcp": "/data/model_prcp_1990.nc"
+  },
+  "output": {
+    "path": "/results/model_1990_0p25deg.nc",
+    "format": "netcdf"
+  },
+  "start_date": "1990-01-01",
+  "start_index": 0,
+  "end_index": 365,
+  "enforce_temperature_order": true
+}

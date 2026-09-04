@@ -1,0 +1,12 @@
+{
+  "request_id": "example-stage2-evaluation",
+  "action": "evaluate",
+  "stage": "stage2",
+  "checkpoint": "artifacts/runs/climateswin_stage2_v1/best.pt",
+  "split": "test",
+  "save_predictions": false,
+  "output": {
+    "path": "artifacts/runs/climateswin_stage2_v1/test_1990"
+  },
+  "enforce_temperature_order": true
+}

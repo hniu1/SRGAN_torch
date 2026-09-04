@@ -1,0 +1,16 @@
+interface:
+  display_name: "Climate Capability"
+  short_description: "One concise, user-facing capability description"
+  default_prompt: "Use $climate-capability-name to perform the scoped climate task."
+
+contracts:
+  request_schema: "../schemas/downscaling-request.schema.json"
+  result_schema: "../schemas/downscaling-result.schema.json"
+  model_registry: "../model-registry.json"
+
+permissions:
+  read_only_inspection: "allowed"
+  long_running_compute: "explicit_approval"
+  scheduler_submission: "explicit_approval"
+  scheduler_cancellation: "explicit_approval"
+  overwrite_or_delete: "explicit_approval"

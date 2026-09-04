@@ -1,0 +1,26 @@
+{
+  "request_id": "example-stage1-1990",
+  "action": "infer",
+  "stage": "stage1",
+  "status": "succeeded",
+  "started_at": "2026-09-04T14:00:00Z",
+  "finished_at": "2026-09-04T14:08:00Z",
+  "resolved_inputs": {
+    "tmin": "/data/model_tmin_1990.nc",
+    "tmax": "/data/model_tmax_1990.nc",
+    "prcp": "/data/model_prcp_1990.nc"
+  },
+  "manifests": ["artifacts/data/daymet_mv_1980_1990/manifest.json"],
+  "checkpoints": ["artifacts/runs/climateswin_v1/best.pt"],
+  "commands": ["python pipeline_04_downscale_gcm.py --data-dir artifacts/data/daymet_mv_1980_1990 --checkpoint artifacts/runs/climateswin_v1/best.pt --input tmin=/data/model_tmin_1990.nc --input tmax=/data/model_tmax_1990.nc --input prcp=/data/model_prcp_1990.nc --output /results/model_1990_0p25deg.nc --start-date 1990-01-01 --start-index 0 --end-index 365 --format netcdf --amp --enforce-temperature-order"],
+  "job_ids": [],
+  "artifacts": [
+    {
+      "path": "/results/model_1990_0p25deg.nc",
+      "kind": "netcdf",
+      "bytes": 0
+    }
+  ],
+  "warnings": ["Example only: replace the placeholder artifact size after execution."],
+  "errors": []
+}

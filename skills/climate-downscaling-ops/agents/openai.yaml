@@ -1,0 +1,4 @@
+interface:
+  display_name: "Downscaling Operations"
+  short_description: "Operate ClimateSwin training jobs on Frontier"
+  default_prompt: "Use $climate-downscaling-ops to inspect or operate a ClimateSwin training workflow."

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/climateswin/downscaling-request.schema.json",
+  "title": "ClimateSwin agent request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "action", "stage"],
+  "properties": {
+    "request_id": {"type": "string", "minLength": 1},
+    "action": {"enum": ["validate", "infer", "evaluate", "status", "submit", "resume", "cancel"]},
+    "stage": {"enum": ["stage1", "stage2", "cascade"]},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tmin", "tmax", "prcp"],
+      "properties": {
+        "tmin": {"type": "string", "minLength": 1},
+        "tmax": {"type": "string", "minLength": 1},
+        "prcp": {"type": "string", "minLength": 1}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "format": {"enum": ["netcdf", "npy"], "default": "netcdf"}
+      }
+    },
+    "checkpoint": {"type": "string", "minLength": 1},
+    "split": {"enum": ["train", "val", "test"], "default": "test"},
+    "max_days": {"type": "integer", "minimum": 1},
+    "save_predictions": {"type": "boolean", "default": false},
+    "start_date": {"type": "string", "format": "date"},
+    "start_index": {"type": "integer", "minimum": 0, "default": 0},
+    "end_index": {"type": "integer", "minimum": 1},
+    "batch_size": {"type": "integer", "minimum": 1},
+    "amp": {"type": "boolean", "default": true},
+    "strict_validation": {"type": "boolean", "default": true},
+    "enforce_temperature_order": {"type": "boolean", "default": true},
+    "job_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[0-9]+$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "scope", "approved_by", "approved_at"],
+      "properties": {
+        "approved": {"const": true},
+        "scope": {"type": "string", "minLength": 1},
+        "approved_by": {"type": "string", "minLength": 1},
+        "approved_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"enum": ["validate", "infer"]}}, "required": ["action"]},
+      "then": {"required": ["inputs"]}
+    },
+    {
+      "if": {"properties": {"action": {"const": "infer"}}, "required": ["action"]},
+      "then": {"required": ["output", "start_date"]}
+    },
+    {
+      "if": {"properties": {"action": {"const": "evaluate"}}, "required": ["action"]},
+      "then": {"required": ["checkpoint", "split", "output"]}
+    },
+    {
+      "if": {"properties": {"action": {"enum": ["submit", "resume", "cancel"]}}, "required": ["action"]},
+      "then": {"required": ["approval"]}
+    },
+    {
+      "if": {"properties": {"action": {"enum": ["status", "cancel"]}}, "required": ["action"]},
+      "then": {"required": ["job_ids"]}
+    }
+  ]
+}
