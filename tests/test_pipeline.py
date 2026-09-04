@@ -22,7 +22,7 @@ from climate_downscaling.transforms import (
     specs_from_manifest,
 )
 from pipeline_02_train_mvswin import initialize_backbone, recover_early_stop_patience
-from utility_plot_spatial_statistics import create_spatial_comparison_plots
+from utility_plot_spatial_statistics import create_spatial_comparison_plots, plot_style
 
 
 VARIABLES = ("tmin", "tmax", "prcp")
@@ -228,6 +228,23 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(float(sample["lr_raw"][2, 0, 0]), 0.0)
             self.assertEqual(float(sample["valid_hr"][0, 0, 0]), 0.0)
 
+            predictions_path = Path(directory) / "stage2_predictions.npy"
+            predictions = np.lib.format.open_memmap(
+                predictions_path, mode="w+", dtype=np.float32, shape=(2, 3, 24, 30)
+            )
+            for day in range(2):
+                predictions[day] = full[day]["target_raw"].numpy()
+            predictions.flush()
+            output_dir = Path(directory) / "evaluation"
+            paths = create_spatial_comparison_plots(
+                prepared, predictions_path, output_dir, "test", VARIABLES, 2, tile_rows=7
+            )
+            self.assertEqual(len(paths), 7)
+            statistics = np.load(output_dir / "spatial_statistics_1990.npz")
+            self.assertAlmostEqual(
+                float(np.nanmax(np.abs(statistics["mean_tmin_difference"]))), 0.0
+            )
+
     def test_spatial_comparison_plots(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -333,6 +350,12 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(tuple(prediction.shape), (2, 3, 52, 68))
         torch.testing.assert_close(prediction, baseline)
         prediction.mean().backward()
+
+    def test_requested_spatial_color_policy(self) -> None:
+        self.assertEqual(plot_style("tmin", "mean", False), ("Spectral_r", (-20, 20)))
+        self.assertEqual(plot_style("tmax", "p95", True), ("RdBu_r", (-5, 5)))
+        self.assertEqual(plot_style("prcp", "p05", False), ("Spectral", (0, 1)))
+        self.assertEqual(plot_style("prcp", "mean", True), ("RdBu", (-2, 2)))
 
     def test_sixfold_reconstruction_and_backbone_initialization(self) -> None:
         common = dict(

@@ -92,6 +92,11 @@ For the strongest final 1-degree-to-1/24-degree cascade, a later fine-tuning
 round should mix in Stage-1-generated 0.25-degree inputs to reduce the small
 train/inference distribution shift.
 
+The completed independent 1990 evaluation is documented in
+[`docs/STAGE2_EVALUATION_1990.md`](docs/STAGE2_EVALUATION_1990.md). Stage 2
+improves MAE over bilinear interpolation by 75.37% for `tmin`, 75.78% for
+`tmax`, and 63.22% for precipitation.
+
 Step 4 is intentionally not included in `submit_pipeline.sh`: it produces a
 multi-decade GCM dataset and should be submitted only after the independent
 test metrics have been reviewed. Its launcher currently targets the aligned
