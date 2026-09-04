@@ -31,3 +31,7 @@ Ready-to-use Codex skill packages live in [`../skills`](../skills). The two fold
 7. Pin checkpoint hashes in the deployment configuration and update the registry only after evaluation.
 
 Paths in the registry are relative to the repository root unless marked otherwise. Site-specific environment paths belong in deployment configuration, not in the scientific request.
+
+## Runtime environment
+
+Use the repository-level [`../requirements.txt`](../requirements.txt) to build the minimal tested Python runtime. Use [`../requirements-lock.txt`](../requirements-lock.txt) only when reproducing the larger shared Frontier Python package set. Both target Python 3.12.12 and PyTorch 2.8.0+rocm6.4; Frontier's ROCm modules, Cray environment, Slurm client, and system libraries remain host prerequisites.

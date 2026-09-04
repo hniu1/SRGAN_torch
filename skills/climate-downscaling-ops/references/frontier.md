@@ -24,4 +24,6 @@ conda activate /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm
 
 Do not assume those versions are portable to another HPC system. Adapt the environment and Slurm account/partition as deployment configuration, without changing scientific contracts.
 
+The repository-level `requirements.txt` pins the tested direct Python dependencies. It intentionally excludes ROCm drivers, Cray modules, Slurm, and system libraries because those are supplied by Frontier. Cartopy is not required; the plotting utility reads the bundled Natural Earth GeoJSON boundaries in `assets/boundaries/`.
+
 Useful path overrides are `MV_BASE_DIR`, `MV_DATA_DIR`, `MV_RUN_DIR`, `MV_STAGE2_DATA_DIR`, and `MV_STAGE2_RUN_DIR`. Resolve and report their effective values before submission.

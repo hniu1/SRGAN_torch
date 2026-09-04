@@ -217,11 +217,32 @@ violation rate. Predictions and a JSON summary are saved in the run directory.
 
 ## Local verification
 
-Use the project environment because the system Python does not contain PyTorch
-or netCDF4:
+The pinned direct dependencies are in [`requirements.txt`](requirements.txt).
+[`requirements-lock.txt`](requirements-lock.txt) records the complete Python
+package set currently installed in the shared environment, including optional
+analysis packages not imported by this pipeline. The tested stack is Python
+3.12.12, ROCm 6.4.1, and PyTorch 2.8.0+rocm6.4.
+On Frontier, rebuild it with:
 
 ```bash
-/lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm/bin/python -m unittest discover -s tests -v
+module load PrgEnv-gnu/8.6.0
+module load rocm/6.4.1
+module load craype-accel-amd-gfx90a
+module load miniforge3/23.11.0-0
+
+conda create --prefix /path/to/climateswin-rocm python=3.12.12 pip=26.0.1 -y
+conda activate /path/to/climateswin-rocm
+python -m pip install -r requirements.txt
+```
+
+ROCm, the Cray programming environment, Slurm, and system libraries are supplied
+host dependencies and are not installed by `requirements.txt`. The repository
+uses bundled Natural Earth GeoJSON boundaries, so Cartopy is not required.
+
+Verify the rebuilt environment with:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 ## Agent integration
