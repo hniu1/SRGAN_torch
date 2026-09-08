@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot 1990 ClimateSwin temporal statistics against prepared Daymet truth."""
+"""Plot 1990 REFINE temporal statistics against prepared Daymet truth."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import functools
 import json
 import warnings
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import matplotlib
 
@@ -80,7 +80,7 @@ def _grid_coordinates(manifest: dict, split: str, variable: str) -> tuple[np.nda
     year = int(manifest["splits"][split]["years"][0])
     source = manifest["source"]
     if manifest.get("storage_layout") == "netcdf_patch_index":
-        from climate_downscaling.stage2_prepare import stage2_source_path
+        from refine_downscaling.stage2_prepare import stage2_source_path
 
         path = stage2_source_path(
             Path(source["data_root"]), variable, year, str(source["hr_suffix"])
@@ -197,7 +197,7 @@ class TruthTileReader:
                 from netCDF4 import Dataset
             except ImportError as exc:
                 raise RuntimeError("netCDF4 is required for Stage-2 spatial plots") from exc
-            from climate_downscaling.stage2_prepare import stage2_source_path
+            from refine_downscaling.stage2_prepare import stage2_source_path
 
             source = self.manifest["source"]
             path = stage2_source_path(
@@ -246,6 +246,60 @@ class TruthTileReader:
         self.handles.clear()
 
 
+def render_spatial_comparison_plots(
+    arrays: Mapping[str, np.ndarray],
+    output_dir: Path,
+    variable_names: Sequence[str],
+    metadata: dict,
+    extent: tuple[float, float, float, float],
+) -> list[Path]:
+    """Render comparison figures from existing spatial-statistic arrays."""
+    plot_dir = Path(output_dir) / "spatial_statistics"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    plot_paths: list[Path] = []
+    for statistic, variable, percentile in STATISTICS:
+        if variable not in variable_names:
+            continue
+        key = f"{statistic}_{variable}"
+        model_stat = arrays[f"{key}_model"]
+        truth_stat = arrays[f"{key}_daymet"]
+        difference = arrays[f"{key}_difference"]
+        field_cmap, (field_min, field_max) = plot_style(variable, statistic, bias=False)
+        bias_cmap, (bias_min, bias_max) = plot_style(variable, statistic, bias=True)
+        figure, axes = plt.subplots(1, 3, figsize=(15, 5.4), constrained_layout=True)
+        for axis, values, title in (
+            (axes[0], model_stat, "REFINE"),
+            (axes[1], truth_stat, "Daymet"),
+        ):
+            image = axis.imshow(
+                values, origin="lower", cmap=field_cmap,
+                vmin=field_min, vmax=field_max, interpolation="nearest", extent=extent,
+            )
+            axis.set_title(title)
+            figure.colorbar(
+                image, ax=axis, orientation="horizontal", pad=0.08,
+                fraction=0.055, aspect=28,
+            )
+        image = axes[2].imshow(
+            difference, origin="lower", cmap=bias_cmap,
+            vmin=bias_min, vmax=bias_max, interpolation="nearest", extent=extent,
+        )
+        axes[2].set_title("REFINE − Daymet")
+        figure.colorbar(
+            image, ax=axes[2], orientation="horizontal", pad=0.08,
+            fraction=0.055, aspect=28,
+        )
+        label = "mean" if percentile is None else f"{int(percentile)}th percentile"
+        figure.suptitle(f"1990 {variable} {label}{_unit_label(metadata, variable)}", fontsize=15)
+        for axis in axes:
+            _format_map_axis(axis, extent)
+        path = plot_dir / f"{key}_comparison.png"
+        figure.savefig(path, dpi=180)
+        plt.close(figure)
+        plot_paths.append(path)
+    return plot_paths
+
+
 def create_spatial_comparison_plots(
     data_dir: Path,
     predictions_path: Path,
@@ -257,6 +311,7 @@ def create_spatial_comparison_plots(
 ) -> list[Path]:
     data_dir = Path(data_dir)
     output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((data_dir / "manifest.json").read_text())
     metadata = manifest.get("variable_metadata", {})
     predictions = np.load(predictions_path, mmap_mode="r")
@@ -281,10 +336,7 @@ def create_spatial_comparison_plots(
         )
     extent = _image_extent(longitude, latitude)
 
-    plot_dir = output_dir / "spatial_statistics"
-    plot_dir.mkdir(parents=True, exist_ok=True)
     arrays: dict[str, np.ndarray] = {}
-    plot_paths: list[Path] = []
 
     reader = TruthTileReader(data_dir, manifest, split, days)
     try:
@@ -325,48 +377,10 @@ def create_spatial_comparison_plots(
     finally:
         reader.close()
 
-    for statistic, variable, percentile in STATISTICS:
-        if variable not in variable_names:
-            continue
-        key = f"{statistic}_{variable}"
-        model_stat = arrays[f"{key}_model"]
-        truth_stat = arrays[f"{key}_daymet"]
-        difference = arrays[f"{key}_difference"]
-        field_cmap, (field_min, field_max) = plot_style(variable, statistic, bias=False)
-        bias_cmap, (bias_min, bias_max) = plot_style(variable, statistic, bias=True)
-        figure, axes = plt.subplots(1, 3, figsize=(15, 5.4), constrained_layout=True)
-        for axis, values, title in (
-            (axes[0], model_stat, "ClimateSwin"),
-            (axes[1], truth_stat, "Daymet"),
-        ):
-            image = axis.imshow(
-                values, origin="lower", cmap=field_cmap,
-                vmin=field_min, vmax=field_max, interpolation="nearest", extent=extent,
-            )
-            axis.set_title(title)
-            figure.colorbar(
-                image, ax=axis, orientation="horizontal", pad=0.08,
-                fraction=0.055, aspect=28,
-            )
-        image = axes[2].imshow(
-            difference, origin="lower", cmap=bias_cmap,
-            vmin=bias_min, vmax=bias_max, interpolation="nearest", extent=extent,
-        )
-        axes[2].set_title("ClimateSwin − Daymet")
-        figure.colorbar(
-            image, ax=axes[2], orientation="horizontal", pad=0.08,
-            fraction=0.055, aspect=28,
-        )
-        label = "mean" if percentile is None else f"{int(percentile)}th percentile"
-        figure.suptitle(f"1990 {variable} {label}{_unit_label(metadata, variable)}", fontsize=15)
-        for axis in axes:
-            _format_map_axis(axis, extent)
-        path = plot_dir / f"{key}_comparison.png"
-        figure.savefig(path, dpi=180)
-        plt.close(figure)
-        plot_paths.append(path)
-
     np.savez_compressed(output_dir / "spatial_statistics_1990.npz", **arrays)
+    plot_paths = render_spatial_comparison_plots(
+        arrays, output_dir, variable_names, metadata, extent
+    )
     index = {
         "split": split,
         "days": days,
@@ -390,27 +404,62 @@ def create_spatial_comparison_plots(
     return plot_paths
 
 
+def replot_saved_spatial_statistics(
+    data_dir: Path,
+    evaluation_dir: Path,
+    split: str,
+) -> list[Path]:
+    """Regenerate figures without rereading truth or prediction time series."""
+    data_dir = Path(data_dir)
+    evaluation_dir = Path(evaluation_dir)
+    manifest = json.loads((data_dir / "manifest.json").read_text())
+    summary = json.loads((evaluation_dir / "evaluation_summary.json").read_text())
+    variable_names = tuple(summary["variables"])
+    longitude, latitude = _grid_coordinates(manifest, split, variable_names[0])
+    extent = _image_extent(longitude, latitude)
+    with np.load(evaluation_dir / "spatial_statistics_1990.npz") as arrays:
+        return render_spatial_comparison_plots(
+            arrays,
+            evaluation_dir,
+            variable_names,
+            manifest.get("variable_metadata", {}),
+            extent,
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--evaluation-dir", type=Path, required=True)
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
     parser.add_argument("--tile-rows", type=int, default=21)
+    parser.add_argument(
+        "--reuse-statistics",
+        action="store_true",
+        help="only rerender plots from the existing spatial_statistics_1990.npz",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     summary = json.loads((args.evaluation_dir / "evaluation_summary.json").read_text())
-    paths = create_spatial_comparison_plots(
-        data_dir=args.data_dir,
-        predictions_path=args.evaluation_dir / "predictions.npy",
-        output_dir=args.evaluation_dir,
-        split=args.split,
-        variable_names=summary["variables"],
-        days=int(summary["days"]),
-        tile_rows=args.tile_rows,
-    )
+    if args.reuse_statistics:
+        paths = replot_saved_spatial_statistics(
+            data_dir=args.data_dir,
+            evaluation_dir=args.evaluation_dir,
+            split=args.split,
+        )
+    else:
+        paths = create_spatial_comparison_plots(
+            data_dir=args.data_dir,
+            predictions_path=args.evaluation_dir / "predictions.npy",
+            output_dir=args.evaluation_dir,
+            split=args.split,
+            variable_names=summary["variables"],
+            days=int(summary["days"]),
+            tile_rows=args.tile_rows,
+        )
     for path in paths:
         print(path.resolve())
 

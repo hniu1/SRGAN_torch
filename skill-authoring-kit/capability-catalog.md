@@ -2,9 +2,9 @@
 
 Keep these capabilities separate even if one coordinating agent invokes several of them.
 
-## `climate-downscaling`
+## `refine-downscaling`
 
-Use when a user wants to validate climate inputs or downscale `tmin`, `tmax`, and `prcp` through Stage 1, Stage 2, or the cascade.
+Use when a user wants to validate environmental inputs or downscale `tmin`, `tmax`, and `prcp` through Stage 1, Stage 2, or the cascade.
 
 Inputs:
 
@@ -23,7 +23,7 @@ Outputs:
 
 Do not use it to train models, submit Slurm jobs, or characterize accuracy.
 
-## `climate-downscaling-evaluation`
+## `refine-evaluation`
 
 Use when a user asks how well a checkpoint performs, requests comparison with Daymet/bilinear interpolation, or wants standardized spatial statistics.
 
@@ -41,7 +41,7 @@ Outputs:
 
 Do not present single-stage held-out results as end-to-end cascade evaluation.
 
-## `climate-downscaling-ops`
+## `refine-ops`
 
 Use for Daymet preparation, fresh/resumed training, Slurm submission/status/cancellation, log diagnosis, and checkpoint recovery.
 

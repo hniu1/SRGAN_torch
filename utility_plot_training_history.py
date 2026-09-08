@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot ClimateSwin training and validation losses from history.jsonl."""
+"""Plot REFINE training and validation losses from history.jsonl."""
 
 from __future__ import annotations
 
@@ -18,12 +18,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--history",
         type=Path,
-        default=Path("artifacts/runs/climateswin_v1/history.jsonl"),
+        default=Path("artifacts/runs/refine_stage1_v1/history.jsonl"),
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("artifacts/runs/climateswin_v1/training_loss_curves.png"),
+        default=Path("artifacts/runs/refine_stage1_v1/training_loss_curves.png"),
     )
     return parser
 
@@ -105,7 +105,7 @@ def main() -> None:
         axis.set_xlabel("Epoch")
         axis.grid(alpha=0.25)
     figure.suptitle(
-        "ClimateSwin multivariable training\nDashed line: walltime interruption and resume",
+        "REFINE multivariable training\nDashed line: walltime interruption and resume",
         fontsize=15,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -11,8 +11,8 @@
     "prcp": "/data/model_prcp_1990.nc"
   },
   "manifests": ["artifacts/data/daymet_mv_1980_1990/manifest.json"],
-  "checkpoints": ["artifacts/runs/climateswin_v1/best.pt"],
-  "commands": ["python pipeline_04_downscale_gcm.py --data-dir artifacts/data/daymet_mv_1980_1990 --checkpoint artifacts/runs/climateswin_v1/best.pt --input tmin=/data/model_tmin_1990.nc --input tmax=/data/model_tmax_1990.nc --input prcp=/data/model_prcp_1990.nc --output /results/model_1990_0p25deg.nc --start-date 1990-01-01 --start-index 0 --end-index 365 --format netcdf --amp --enforce-temperature-order"],
+  "checkpoints": ["artifacts/runs/refine_stage1_v1/best.pt"],
+  "commands": ["python pipeline_04_downscale_stage1.py --data-dir artifacts/data/daymet_mv_1980_1990 --checkpoint artifacts/runs/refine_stage1_v1/best.pt --input tmin=/data/model_tmin_1990.nc --input tmax=/data/model_tmax_1990.nc --input prcp=/data/model_prcp_1990.nc --output /results/model_1990_0p25deg.nc --start-date 1990-01-01 --start-index 0 --end-index 365 --format netcdf --amp --enforce-temperature-order"],
   "job_ids": [],
   "artifacts": [
     {

@@ -20,7 +20,7 @@ conda activate /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm
 
 BASE_DIR=${MV_BASE_DIR:-$PWD}
 DATA_DIR=${MV_STAGE2_DATA_DIR:-${BASE_DIR}/artifacts/data/daymet_mv_stage2_1980_1990}
-RUN_DIR=${MV_STAGE2_RUN_DIR:-${BASE_DIR}/artifacts/runs/climateswin_stage2_v1}
+RUN_DIR=${MV_STAGE2_RUN_DIR:-${BASE_DIR}/artifacts/runs/refine_stage2_v1}
 export MIOPEN_USER_DB_PATH=/tmp/miopen-mveval-s2-${USER}-${SLURM_JOB_ID}
 export MIOPEN_CUSTOM_CACHE_DIR=${MIOPEN_USER_DB_PATH}
 mkdir -p "${MIOPEN_USER_DB_PATH}" "${BASE_DIR}/logs"

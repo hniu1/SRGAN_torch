@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/climateswin/downscaling-request.schema.json",
-  "title": "ClimateSwin agent request",
+  "$id": "https://example.org/refine/downscaling-request.schema.json",
+  "title": "REFINE agent request",
   "type": "object",
   "additionalProperties": false,
   "required": ["request_id", "action", "stage"],

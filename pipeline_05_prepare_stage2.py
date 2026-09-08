@@ -6,9 +6,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from climate_downscaling.prepare import DEFAULT_DATA_ROOT, DEFAULT_DEM_ROOT
-from climate_downscaling.stage2_prepare import prepare_stage2_index
-from pipeline_01_prepare_multivariable import year_range
+from refine_downscaling.prepare import DEFAULT_DATA_ROOT, DEFAULT_DEM_ROOT
+from refine_downscaling.stage2_prepare import prepare_stage2_index
+from pipeline_01_prepare_stage1 import year_range
 
 
 def build_parser() -> argparse.ArgumentParser:

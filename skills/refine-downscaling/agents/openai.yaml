@@ -1,0 +1,4 @@
+interface:
+  display_name: "REFINE Downscaling"
+  short_description: "Run joint multivariable REFINE downscaling"
+  default_prompt: "Use $refine-downscaling to validate and downscale aligned environmental inputs."

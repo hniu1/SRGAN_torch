@@ -1,4 +1,4 @@
-# ClimateSwin runtime tested with Python 3.12.12 and ROCm 6.4.1 on Frontier.
+# REFINE runtime tested with Python 3.12.12 and ROCm 6.4.1 on Frontier.
 # The extra index supplies the AMD ROCm build of PyTorch.
 --extra-index-url https://download.pytorch.org/whl/rocm6.4
 

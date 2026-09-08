@@ -1,6 +1,6 @@
-# Climate downscaling agent authoring kit
+# REFINE agent authoring kit
 
-This folder is the framework-neutral handoff package for teams building their own agent skills or tools around the ClimateSwin pipeline. It describes stable capabilities and contracts without requiring Codex's skill format.
+This folder is the framework-neutral handoff package for teams building agent skills or tools around REFINE—the Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy System. It describes stable capabilities and contracts without requiring Codex's skill format.
 
 Ready-to-use Codex skill packages live in [`../skills`](../skills). The two folders have different purposes:
 

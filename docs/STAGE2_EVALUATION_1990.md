@@ -1,4 +1,4 @@
-# Stage-2 ClimateSwin evaluation: 1990
+# Stage-2 REFINE evaluation: 1990
 
 Stage 2 downscales the jointly modeled `tmin`, `tmax`, and precipitation fields
 from 0.25 degree to 1/24 degree. The independent test period contains all 365
@@ -30,7 +30,7 @@ validation objective of 0.0070782. The first-epoch validation objective was
 ## Spatial diagnostics
 
 The spatial products are generated under
-`artifacts/runs/climateswin_stage2_v1/test_1990/spatial_statistics/`. They show
+`artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/`. They show
 the model field, Daymet truth, and model-minus-Daymet bias for the annual mean
 and selected 5th/95th percentiles. Physical fields use the fixed `Spectral` or
 `Spectral_r` scales; model-minus-Daymet panels use the fixed `RdBu` or
@@ -42,4 +42,4 @@ Natural Earth country borders are overlaid in dark lines, with thinner,
 semi-transparent state/province borders for the USA, Canada, and Mexico. Each
 panel has its own horizontal color bar directly below the map.
 
-Metrics source: `artifacts/runs/climateswin_stage2_v1/test_1990/evaluation_summary.json`.
+Metrics source: `artifacts/runs/refine_stage2_v1/test_1990/evaluation_summary.json`.

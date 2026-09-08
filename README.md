@@ -1,15 +1,17 @@
-# Joint Multivariable ClimateSwin Downscaling
+# REFINE
 
-This branch trains one terrain-aware transformer to downscale daily `tmin`,
-`tmax`, and precipitation together:
+**Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy System**
+
+REFINE is a terrain-aware transformer framework that jointly downscales daily
+`tmin`, `tmax`, and precipitation:
 
 ```text
 Daymet/ERA5 or GCM at 1 degree
-       -> Stage-1 ClimateSwin (4x) -> 0.25 degree
-       -> Stage-2 ClimateSwin (6x) -> 1/24 degree
+       -> Stage-1 REFINE (4x) -> 0.25 degree
+       -> Stage-2 REFINE (6x) -> 1/24 degree
 ```
 
-ClimateSwin uses a shared variable-aware SwinV2 encoder, shifted-window
+REFINE uses a shared variable-aware SwinV2 encoder, shifted-window
 attention on the low-resolution grid, PixelShuffle reconstruction, native
 high-resolution terrain fusion, and a separate decoder for every output
 variable. It is deterministic and does not use an adversarial discriminator.
@@ -18,10 +20,10 @@ variable. It is deterministic and does not use an adversarial discriminator.
 
 | Step | Entry point | Frontier launcher |
 |---:|---|---|
-| 1 | `pipeline_01_prepare_multivariable.py` | `slurm/01_prepare_multivariable.slurm` |
-| 2 | `pipeline_02_train_mvswin.py` | `slurm/02_train_mvswin.slurm` |
-| 3 | `pipeline_03_evaluate_mvswin.py` | `slurm/03_evaluate_mvswin.slurm` |
-| 4 | `pipeline_04_downscale_gcm.py` | `slurm/04_downscale_gcm.slurm` |
+| 1 | `pipeline_01_prepare_stage1.py` | `slurm/01_prepare_stage1.slurm` |
+| 2 | `pipeline_02_train_stage1.py` | `slurm/02_train_stage1.slurm` |
+| 3 | `pipeline_03_evaluate_stage1.py` | `slurm/03_evaluate_stage1.slurm` |
+| 4 | `pipeline_04_downscale_stage1.py` | `slurm/04_downscale_stage1.slurm` |
 
 Submit preparation, training, and independent evaluation with dependencies:
 
@@ -32,9 +34,9 @@ bash submit_pipeline.sh
 Or submit and inspect each stage separately:
 
 ```bash
-sbatch slurm/01_prepare_multivariable.slurm
-sbatch slurm/02_train_mvswin.slurm
-sbatch slurm/03_evaluate_mvswin.slurm
+sbatch slurm/01_prepare_stage1.slurm
+sbatch slurm/02_train_stage1.slurm
+sbatch slurm/03_evaluate_stage1.slurm
 ```
 
 The launchers accept these environment overrides:
@@ -80,7 +82,7 @@ they are useful as a baseline, but are deliberately not used as training
 targets.
 
 The Stage-2 launcher warm-starts the compatible variable stem, seasonal/static
-fusion, and Swin encoder from `artifacts/runs/climateswin_v1/best.pt`. The 6x
+fusion, and Swin encoder from `artifacts/runs/refine_stage1_v1/best.pt`. The 6x
 upsampling stages and variable decoders start fresh; use `MV_STAGE1_CHECKPOINT`
 to choose another source checkpoint. Use `MV_STAGE2_RESUME` to resume a Stage-2
 checkpoint instead. Stage-2 paths can be overridden with `MV_STAGE2_DATA_DIR`
@@ -146,7 +148,7 @@ stacks only those small crops in memory. Adding a prepared variable therefore
 does not rewrite tmin, tmax, precipitation, or the shared arrays. For example:
 
 ```bash
-python pipeline_01_prepare_multivariable.py \
+python pipeline_01_prepare_stage1.py \
   --output-dir artifacts/data/daymet_mv_1980_1990 \
   --variables humidity
 ```
@@ -230,8 +232,8 @@ module load rocm/6.4.1
 module load craype-accel-amd-gfx90a
 module load miniforge3/23.11.0-0
 
-conda create --prefix /path/to/climateswin-rocm python=3.12.12 pip=26.0.1 -y
-conda activate /path/to/climateswin-rocm
+conda create --prefix /path/to/refine-rocm python=3.12.12 pip=26.0.1 -y
+conda activate /path/to/refine-rocm
 python -m pip install -r requirements.txt
 ```
 
@@ -259,4 +261,4 @@ Keep these capabilities separate so read-only inspection does not imply authoriz
 The previous SRGAN source, launchers, documentation, utilities, generated
 checkpoints, arrays, and logs are preserved under
 [`archive/srgan_v2`](archive/srgan_v2/ARCHIVE_NOTICE.md). The active repository
-root now contains only the ClimateSwin pipeline.
+root now contains only the REFINE pipeline.

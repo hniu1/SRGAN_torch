@@ -9,19 +9,19 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from climate_downscaling.data import FullFieldDataset, MultivariablePatchDataset
-from climate_downscaling.losses import MultivariableLoss
-from climate_downscaling.model import ClimateSwin, ClimateSwinConfig
-from climate_downscaling.prepare import prepare_dataset, read_variable_diagnostics
-from climate_downscaling.stage2_data import Stage2FullFieldDataset, Stage2NetCDFPatchDataset
-from climate_downscaling.stage2_prepare import prepare_stage2_index
-from climate_downscaling.transforms import (
+from refine_downscaling.data import FullFieldDataset, MultivariablePatchDataset
+from refine_downscaling.losses import MultivariableLoss
+from refine_downscaling.model import REFINE, REFINEConfig
+from refine_downscaling.prepare import prepare_dataset, read_variable_diagnostics
+from refine_downscaling.stage2_data import Stage2FullFieldDataset, Stage2NetCDFPatchDataset
+from refine_downscaling.stage2_prepare import prepare_stage2_index
+from refine_downscaling.transforms import (
     TransformSpec,
     forward_numpy,
     inverse_numpy,
     specs_from_manifest,
 )
-from pipeline_02_train_mvswin import initialize_backbone, recover_early_stop_patience
+from pipeline_02_train_stage1 import initialize_backbone, recover_early_stop_patience
 from utility_plot_spatial_statistics import create_spatial_comparison_plots, plot_style
 
 
@@ -331,7 +331,7 @@ class PreparationTests(unittest.TestCase):
 
 class ModelTests(unittest.TestCase):
     def test_arbitrary_shape_and_zero_residual(self) -> None:
-        config = ClimateSwinConfig(
+        config = REFINEConfig(
             embed_dim=24,
             num_groups=1,
             blocks_per_group=2,
@@ -340,7 +340,7 @@ class ModelTests(unittest.TestCase):
             variable_dropout=0.0,
             drop_path=0.0,
         )
-        model = ClimateSwin(config)
+        model = REFINE(config)
         dynamic = torch.randn(2, 3, 13, 17)
         static_lr = torch.randn(2, 4, 13, 17)
         static_hr = torch.randn(2, 4, 52, 68)
@@ -362,8 +362,8 @@ class ModelTests(unittest.TestCase):
             embed_dim=24, num_groups=1, blocks_per_group=2,
             num_heads=4, window_size=4, variable_dropout=0.0, drop_path=0.0,
         )
-        source = ClimateSwin(ClimateSwinConfig(scale_factor=4, **common))
-        target = ClimateSwin(ClimateSwinConfig(scale_factor=6, **common))
+        source = REFINE(REFINEConfig(scale_factor=4, **common))
+        target = REFINE(REFINEConfig(scale_factor=6, **common))
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "stage1.pt"
             torch.save({

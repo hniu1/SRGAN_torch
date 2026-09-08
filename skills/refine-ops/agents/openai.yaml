@@ -1,0 +1,4 @@
+interface:
+  display_name: "Downscaling Operations"
+  short_description: "Operate REFINE training jobs on Frontier"
+  default_prompt: "Use $refine-ops to inspect or operate a REFINE training workflow."
