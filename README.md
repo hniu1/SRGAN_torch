@@ -8,7 +8,7 @@ transformer. This branch contains one downscaling stage.
 
 **Repository authors:** Haoran Niu and Deeksha Rastogi.
 
-**Data provenance:** Original Daymet data ([Thornton et al.](https://daymet.ornl.gov))
+**Data provenance:** Original [Daymet data](https://daymet.ornl.gov) (Thornton et al., 2021)
 are available at 1 km resolution. For this demo, those data have been coarsened to approximately 4 km (1/24°) and 25 km (1/4°), providing the fine-resolution reference and coarse model inputs, respectively.
 
 ## Start here
@@ -122,3 +122,8 @@ OMP_NUM_THREADS=2 python -m unittest discover -s tests -v
 Launchers accept `MV_BASE_DIR`, `MV_DATA_DIR`, `MV_RUN_DIR`, and `MV_CHECKPOINT`.
 Inference also accepts `MV_TMIN_INPUT`, `MV_TMAX_INPUT`, `MV_PRCP_INPUT`,
 `MV_OUTPUT`, `MV_START_INDEX`, and `MV_END_INDEX` (for the bundled 1990 year).
+
+## References
+
+Thornton, P. E., R. Shrestha, M. Thornton, S.-C. Kao, Y. Wei, and B. E. Wilson. 2021.
+[Gridded daily weather data for North America with comprehensive uncertainty quantification](https://doi.org/10.1038/s41597-021-00973-0).
