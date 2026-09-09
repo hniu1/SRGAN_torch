@@ -1,4 +1,5 @@
-# REFINE: Frontier inference demo
+# REFINE: Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy Systems
+## Frontier inference demo
 
 Downscale daily Daymet `tmin`, `tmax`, and `prcp` from **1/4° to 1/24° (6×)**,
 approximately 25 km to 4 km, using the supplied pretrained terrain-aware REFINE
