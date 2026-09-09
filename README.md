@@ -125,5 +125,4 @@ Inference also accepts `MV_TMIN_INPUT`, `MV_TMAX_INPUT`, `MV_PRCP_INPUT`,
 
 ## References
 
-Thornton, P. E., R. Shrestha, M. Thornton, S.-C. Kao, Y. Wei, and B. E. Wilson. 2021.
-[Gridded daily weather data for North America with comprehensive uncertainty quantification](https://doi.org/10.1038/s41597-021-00973-0).
+Thornton, P.E., Shrestha, R., Thornton, M. et al. [Gridded daily weather data for North America with comprehensive uncertainty quantification](https://doi.org/10.1038/s41597-021-00973-0). Sci Data 8, 190 (2021).
