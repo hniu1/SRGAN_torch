@@ -16,7 +16,7 @@ Evaluate a named checkpoint on a named data split and keep the run identity atta
 
    ```bash
    python skills/refine-evaluation/scripts/summarize_evaluation.py \
-     artifacts/runs/refine_stage2_v1/test_1990/evaluation_summary.json
+     docs/reference_1990/evaluation_summary.json
    ```
 
 5. Read [references/metrics.md](references/metrics.md) before interpreting the statistics.

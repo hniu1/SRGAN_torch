@@ -18,12 +18,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--history",
         type=Path,
-        default=Path("artifacts/runs/refine_stage1_v1/history.jsonl"),
+        default=Path("artifacts/runs/refine_6x/history.jsonl"),
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("artifacts/runs/refine_stage1_v1/training_loss_curves.png"),
+        default=Path("artifacts/runs/refine_6x/training_loss_curves.png"),
     )
     return parser
 

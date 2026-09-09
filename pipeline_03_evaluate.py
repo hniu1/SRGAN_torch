@@ -33,9 +33,9 @@ def load_evaluation_dataset(data_dir: Path, split: str, variable_names: tuple[st
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_mv_1980_1990"))
-    parser.add_argument("--checkpoint", type=Path, default=Path("artifacts/runs/refine_stage1_v1/best.pt"))
-    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/runs/refine_stage1_v1/test_1990"))
+    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared"))
+    parser.add_argument("--checkpoint", type=Path, default=Path("checkpoints/refine_6x.pt"))
+    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/runs/refine_6x/test_1990"))
     parser.add_argument("--split", choices=["train", "val", "test"], default="test")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=0)

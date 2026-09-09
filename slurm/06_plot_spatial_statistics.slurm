@@ -13,11 +13,11 @@ set -euo pipefail
 
 module load PrgEnv-gnu/8.6.0
 module load miniforge3/23.11.0-0
-conda activate /lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm
+conda activate "${REFINE_ENV:-/lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm}"
 
 BASE_DIR=${MV_BASE_DIR:-$PWD}
-DATA_DIR=${MV_STAGE2_DATA_DIR:-${BASE_DIR}/artifacts/data/daymet_mv_stage2_1980_1990}
-RUN_DIR=${MV_STAGE2_RUN_DIR:-${BASE_DIR}/artifacts/runs/refine_stage2_v1}
+DATA_DIR=${MV_DATA_DIR:-${BASE_DIR}/daymet/prepared}
+RUN_DIR=${MV_RUN_DIR:-${BASE_DIR}/artifacts/runs/refine_6x}
 export MPLCONFIGDIR=/tmp/matplotlib-mvspatial-s2-${USER}-${SLURM_JOB_ID}
 mkdir -p "${MPLCONFIGDIR}" "${BASE_DIR}/logs"
 

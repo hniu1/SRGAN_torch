@@ -8,13 +8,16 @@ from pathlib import Path
 
 from refine_downscaling.prepare import DEFAULT_DATA_ROOT, DEFAULT_DEM_ROOT
 from refine_downscaling.stage2_prepare import prepare_stage2_index
-from pipeline_01_prepare_stage1 import year_range
+def year_range(start: int, end: int) -> list[int]:
+    if end <= start:
+        raise ValueError("year end must exceed start")
+    return list(range(start, end))
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/data/daymet_mv_stage2_1980_1990"))
-    parser.add_argument("--stage1-manifest", type=Path, default=Path("artifacts/data/daymet_mv_1980_1990/manifest.json"))
+    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/data/daymet_training"))
+    parser.add_argument("--normalization-manifest", type=Path, default=Path("daymet/normalization.json"))
     parser.add_argument("--variables", nargs="+", default=["tmin", "tmax", "prcp"])
     parser.add_argument("--train-start", type=int, default=1980)
     parser.add_argument("--train-end", type=int, default=1988)
@@ -37,7 +40,7 @@ def main() -> None:
     if any(set(splits[a]) & set(splits[b]) for a, b in (("train", "val"), ("train", "test"), ("val", "test"))):
         raise ValueError("Stage-2 chronological splits overlap")
     prepare_stage2_index(
-        args.output_dir, args.variables, splits, args.stage1_manifest,
+        args.output_dir, args.variables, splits, args.normalization_manifest,
         data_root=args.data_root, dem_root=args.dem_root, scale_factor=6,
     )
 

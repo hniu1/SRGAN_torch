@@ -1,0 +1,29 @@
+{
+  "split": "test",
+  "days": 365,
+  "variables": [
+    "tmin",
+    "tmax",
+    "prcp"
+  ],
+  "statistics": [
+    "mean_tmin",
+    "mean_tmax",
+    "mean_prcp",
+    "p95_prcp",
+    "p95_tmax",
+    "p05_tmax",
+    "p05_tmin"
+  ],
+  "plots": [
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_tmin_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_prcp_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p95_prcp_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p95_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p05_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p05_tmin_comparison.png"
+  ],
+  "arrays": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics_1990.npz",
+  "color_scale_policy": "fixed variable/statistic ranges; physical fields are non-bias, model-minus-Daymet is bias"
+}

@@ -1,0 +1,89 @@
+{
+  "checkpoint": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/best.pt",
+  "data_dir": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990",
+  "split": "test",
+  "storage_layout": "netcdf_patch_index",
+  "days": 365,
+  "variables": [
+    "tmin",
+    "tmax",
+    "prcp"
+  ],
+  "variable_metadata": {
+    "tmin": {
+      "source_units": "C",
+      "units": "degC",
+      "unit_conversion": "none",
+      "long_name": "daily minimum temperature"
+    },
+    "tmax": {
+      "source_units": "C",
+      "units": "degC",
+      "unit_conversion": "none",
+      "long_name": "daily maximum temperature"
+    },
+    "prcp": {
+      "source_units": "mm/dy",
+      "units": "mm/day",
+      "unit_conversion": "none",
+      "long_name": "daily total precipitation"
+    }
+  },
+  "parameters": 5181483,
+  "metrics": {
+    "tmin": {
+      "model": {
+        "bias": -0.0010207574438301024,
+        "mae": 0.0496619460179074,
+        "rmse": 0.16797733412788188
+      },
+      "bilinear_baseline": {
+        "bias": -0.0006671140289101206,
+        "mae": 0.2016324595322189,
+        "rmse": 0.9939177126349791
+      },
+      "mae_improvement_percent": 75.37006386118506,
+      "count": 1545894720
+    },
+    "tmax": {
+      "model": {
+        "bias": 0.0013884197858564362,
+        "mae": 0.04873290362823186,
+        "rmse": 0.1534709951201859
+      },
+      "bilinear_baseline": {
+        "bias": 0.0010003023723473951,
+        "mae": 0.20118019080497757,
+        "rmse": 0.8496797275001995
+      },
+      "mae_improvement_percent": 75.77649000468783,
+      "count": 1545894720
+    },
+    "prcp": {
+      "model": {
+        "bias": -0.0009433569734251562,
+        "mae": 0.04953514746296842,
+        "rmse": 0.31373976289427447
+      },
+      "bilinear_baseline": {
+        "bias": 6.305749171886617e-06,
+        "mae": 0.13467113629456975,
+        "rmse": 0.5890455596037758
+      },
+      "mae_improvement_percent": 63.217695472162,
+      "count": 1545894720
+    }
+  },
+  "temperature_order_violation_fraction": 0.014153142977291493,
+  "temperature_order_enforced": true,
+  "spatial_comparison_plots": [
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_tmin_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/mean_prcp_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p95_prcp_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p95_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p05_tmax_comparison.png",
+    "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics/p05_tmin_comparison.png"
+  ],
+  "spatial_statistics": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics_1990.npz"
+}

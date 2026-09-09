@@ -313,6 +313,9 @@ def create_spatial_comparison_plots(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((data_dir / "manifest.json").read_text())
+    if manifest.get("storage_layout") == "netcdf_patch_index":
+        from refine_downscaling.stage2_data import load_stage2_manifest
+        manifest = load_stage2_manifest(data_dir)
     metadata = manifest.get("variable_metadata", {})
     predictions = np.load(predictions_path, mmap_mode="r")
     variable_names = tuple(variable_names)
@@ -413,6 +416,9 @@ def replot_saved_spatial_statistics(
     data_dir = Path(data_dir)
     evaluation_dir = Path(evaluation_dir)
     manifest = json.loads((data_dir / "manifest.json").read_text())
+    if manifest.get("storage_layout") == "netcdf_patch_index":
+        from refine_downscaling.stage2_data import load_stage2_manifest
+        manifest = load_stage2_manifest(data_dir)
     summary = json.loads((evaluation_dir / "evaluation_summary.json").read_text())
     variable_names = tuple(summary["variables"])
     longitude, latitude = _grid_coordinates(manifest, split, variable_names[0])

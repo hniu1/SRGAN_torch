@@ -47,8 +47,8 @@ def load_training_layout(data_dir: Path):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_mv_1980_1990"))
-    parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/refine_stage1_v1"))
+    parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_training"))
+    parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/refine_6x"))
     checkpoint_group = parser.add_mutually_exclusive_group()
     checkpoint_group.add_argument("--resume", type=Path)
     checkpoint_group.add_argument(
@@ -62,13 +62,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=4, help="Per process")
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--patches-per-day", type=int, default=32)
-    parser.add_argument("--validation-patches-per-day", type=int, default=8)
-    parser.add_argument("--core-size", type=int, default=16)
-    parser.add_argument("--halo", type=int, default=4)
+    parser.add_argument("--patches-per-day", type=int, default=8)
+    parser.add_argument("--validation-patches-per-day", type=int, default=4)
+    parser.add_argument("--core-size", type=int, default=8)
+    parser.add_argument("--halo", type=int, default=2)
     parser.add_argument("--embed-dim", type=int, default=96)
-    parser.add_argument("--num-groups", type=int, default=4)
-    parser.add_argument("--blocks-per-group", type=int, default=4)
+    parser.add_argument("--num-groups", type=int, default=6)
+    parser.add_argument("--blocks-per-group", type=int, default=6)
     parser.add_argument("--num-heads", type=int, default=6)
     parser.add_argument("--window-size", type=int, default=8)
     parser.add_argument("--mlp-ratio", type=float, default=2.0)
@@ -135,7 +135,7 @@ def unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def initialize_backbone(model: torch.nn.Module, checkpoint_path: Path) -> dict:
-    """Load matching Stage-1 representation weights, excluding scale-specific heads."""
+    """Load compatible representation weights, excluding scale-specific heads."""
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     source_config = REFINEConfig.from_dict(checkpoint["model_config"])
     target = unwrap_model(model)
@@ -268,6 +268,8 @@ def main() -> None:
     try:
         seed_everything(args.seed + context.rank)
         manifest, patch_dataset_class = load_training_layout(args.data_dir)
+        if any(not manifest["splits"][split]["samples"] for split in ("train", "val")):
+            raise ValueError("Training requires nonempty train/val splits; the demo contains test data only")
         variables = tuple(args.variables or manifest["variables"])
         config = REFINEConfig(
             variable_names=variables,

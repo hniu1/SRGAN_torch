@@ -1,0 +1,23 @@
+{
+  "transforms": {
+    "tmin": {
+      "name": "tmin",
+      "kind": "standard",
+      "mean": 7.5141470802526875,
+      "std": 13.604302792257563
+    },
+    "tmax": {
+      "name": "tmax",
+      "kind": "standard",
+      "mean": 11.839962105357229,
+      "std": 12.699043461719992
+    },
+    "prcp": {
+      "name": "prcp",
+      "kind": "log1p_standard",
+      "mean": 0.6872528798550401,
+      "std": 0.8470728729076148
+    }
+  },
+  "provenance": "Frozen normalization used by the pretrained 6x checkpoint; fitted on 1980-1987 only."
+}

@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from refine_downscaling.data import FullFieldDataset, MultivariablePatchDataset
 from refine_downscaling.losses import MultivariableLoss
 from refine_downscaling.model import REFINE, REFINEConfig
-from refine_downscaling.prepare import prepare_dataset, read_variable_diagnostics
+from refine_downscaling.prepare import read_variable_diagnostics
 from refine_downscaling.stage2_data import Stage2FullFieldDataset, Stage2NetCDFPatchDataset
 from refine_downscaling.stage2_prepare import prepare_stage2_index
 from refine_downscaling.transforms import (
@@ -21,7 +21,7 @@ from refine_downscaling.transforms import (
     inverse_numpy,
     specs_from_manifest,
 )
-from pipeline_02_train_stage1 import initialize_backbone, recover_early_stop_patience
+from pipeline_02_train import initialize_backbone, recover_early_stop_patience
 from utility_plot_spatial_statistics import create_spatial_comparison_plots, plot_style
 
 
@@ -121,8 +121,8 @@ def create_synthetic_stage2(path: Path) -> Path:
         "tmax": TransformSpec("tmax", "standard", 5.0, 10.0),
         "prcp": TransformSpec("prcp", "log1p_standard", 0.5, 0.75),
     }
-    stage1_manifest = path / "stage1_manifest.json"
-    stage1_manifest.write_text(json.dumps({
+    normalization_manifest = path / "normalization_manifest.json"
+    normalization_manifest.write_text(json.dumps({
         "transforms": {name: spec.to_dict() for name, spec in transforms.items()}
     }))
     for variable_index, variable in enumerate(VARIABLES):
@@ -156,7 +156,7 @@ def create_synthetic_stage2(path: Path) -> Path:
         prepared,
         VARIABLES,
         {"train": [2000], "val": [2001], "test": [2002]},
-        stage1_manifest,
+        normalization_manifest,
         source,
         dem,
     )
@@ -294,40 +294,6 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(float(precipitation.values[0, 0, 0]), 0.0)
             self.assertTrue(np.isnan(precipitation.values[0, 0, 1]))
 
-    def test_new_variable_is_appended_without_rewriting_existing_variable(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source = root / "source"
-            dem = root / "dem"
-            prepared = root / "prepared"
-            lr_shape = (3, 4)
-            hr_shape = (12, 16)
-            years = (2000, 2001, 2002)
-            for variable_index, variable in enumerate(("tmin", "prcp")):
-                for year in years:
-                    lr = np.full((2, *lr_shape), variable_index + year / 1000, dtype=np.float32)
-                    hr = np.repeat(np.repeat(lr, 4, axis=-2), 4, axis=-1)
-                    create_source_netcdf(
-                        source / f"Daymet_ERA5_{variable}_dy_{year}_1deg.nc", variable, lr
-                    )
-                    create_source_netcdf(
-                        source / f"Daymet_ERA5_{variable}_dy_{year}_0p25deg.nc", variable, hr
-                    )
-            create_dem_netcdf(dem / "VICa_DEM_1deg_fill0.nc", np.ones(lr_shape, dtype=np.float32))
-            create_dem_netcdf(dem / "VICa_DEM_0p25deg_fill0.nc", np.ones(hr_shape, dtype=np.float32))
-            splits = {"train": [2000], "val": [2001], "test": [2002]}
-
-            prepare_dataset(prepared, ["tmin"], splits, source, dem)
-            existing_path = prepared / "variables" / "tmin" / "lr_train.npy"
-            existing_bytes = existing_path.read_bytes()
-            prepare_dataset(prepared, ["prcp"], splits, source, dem)
-
-            self.assertEqual(existing_path.read_bytes(), existing_bytes)
-            manifest = json.loads((prepared / "manifest.json").read_text())
-            self.assertEqual(manifest["variables"], ["tmin", "prcp"])
-            dataset = FullFieldDataset(prepared, "test")
-            self.assertEqual(tuple(dataset[0]["lr"].shape), (2, *lr_shape))
-
 
 class ModelTests(unittest.TestCase):
     def test_arbitrary_shape_and_zero_residual(self) -> None:
@@ -343,11 +309,11 @@ class ModelTests(unittest.TestCase):
         model = REFINE(config)
         dynamic = torch.randn(2, 3, 13, 17)
         static_lr = torch.randn(2, 4, 13, 17)
-        static_hr = torch.randn(2, 4, 52, 68)
+        static_hr = torch.randn(2, 4, 78, 102)
         season = torch.randn(2, 2)
         prediction = model(dynamic, static_lr, static_hr, season)
-        baseline = F.interpolate(dynamic, scale_factor=4, mode="bilinear", align_corners=False)
-        self.assertEqual(tuple(prediction.shape), (2, 3, 52, 68))
+        baseline = F.interpolate(dynamic, scale_factor=6, mode="bilinear", align_corners=False)
+        self.assertEqual(tuple(prediction.shape), (2, 3, 78, 102))
         torch.testing.assert_close(prediction, baseline)
         prediction.mean().backward()
 
@@ -365,7 +331,7 @@ class ModelTests(unittest.TestCase):
         source = REFINE(REFINEConfig(scale_factor=4, **common))
         target = REFINE(REFINEConfig(scale_factor=6, **common))
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint = Path(directory) / "stage1.pt"
+            checkpoint = Path(directory) / "backbone.pt"
             torch.save({
                 "model": source.state_dict(),
                 "model_config": source.config.to_dict(),

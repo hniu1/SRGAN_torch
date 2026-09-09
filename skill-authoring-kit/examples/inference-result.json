@@ -1,26 +1,22 @@
 {
-  "request_id": "example-stage1-1990",
+  "request_id": "example-demo-day1",
   "action": "infer",
-  "stage": "stage1",
-  "status": "succeeded",
-  "started_at": "2026-09-04T14:00:00Z",
-  "finished_at": "2026-09-04T14:08:00Z",
+  "stage": "stage2",
+  "status": "validated",
   "resolved_inputs": {
-    "tmin": "/data/model_tmin_1990.nc",
-    "tmax": "/data/model_tmax_1990.nc",
-    "prcp": "/data/model_prcp_1990.nc"
+    "tmin": "daymet/data/Daymet_ERA5_tmin_dy_1990_0p25deg.nc",
+    "tmax": "daymet/data/Daymet_ERA5_tmax_dy_1990_0p25deg.nc",
+    "prcp": "daymet/data/Daymet_ERA5_prcp_dy_1990_0p25deg.nc"
   },
-  "manifests": ["artifacts/data/daymet_mv_1980_1990/manifest.json"],
-  "checkpoints": ["artifacts/runs/refine_stage1_v1/best.pt"],
-  "commands": ["python pipeline_04_downscale_stage1.py --data-dir artifacts/data/daymet_mv_1980_1990 --checkpoint artifacts/runs/refine_stage1_v1/best.pt --input tmin=/data/model_tmin_1990.nc --input tmax=/data/model_tmax_1990.nc --input prcp=/data/model_prcp_1990.nc --output /results/model_1990_0p25deg.nc --start-date 1990-01-01 --start-index 0 --end-index 365 --format netcdf --amp --enforce-temperature-order"],
-  "job_ids": [],
-  "artifacts": [
-    {
-      "path": "/results/model_1990_0p25deg.nc",
-      "kind": "netcdf",
-      "bytes": 0
-    }
+  "manifests": [
+    "daymet/prepared/manifest.json"
   ],
-  "warnings": ["Example only: replace the placeholder artifact size after execution."],
+  "checkpoints": [
+    "checkpoints/refine_6x.pt"
+  ],
+  "commands": [],
+  "warnings": [
+    "Illustrative result only; no inference has been executed."
+  ],
   "errors": []
 }

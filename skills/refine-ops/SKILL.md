@@ -5,7 +5,7 @@ description: Prepare data, train or resume REFINE models, and operate the reposi
 
 # REFINE Operations
 
-Operate the two-stage REFINE workflow conservatively on Frontier. Read-only scheduler and filesystem inspection may proceed directly; state-changing scheduler actions require explicit user authorization.
+Operate the single-stage 6× REFINE workflow conservatively on Frontier. Read-only scheduler and filesystem inspection may proceed directly; state-changing scheduler actions require explicit user authorization.
 
 ## Workflow
 
@@ -20,7 +20,7 @@ Operate the two-stage REFINE workflow conservatively on Frontier. Read-only sche
    ```
 
 6. Inspect the corresponding `logs/*-JOB_ID.out` and `.err`, checkpoint metadata, and training history before diagnosing a failure or deciding to resume.
-7. Immediately before `sbatch`, `scancel`, output overwrite, or artifact deletion, obtain explicit authorization and state the exact command and targets.
+7. Before scheduler mutations, verify that existing user authorization covers the command and targets; ask only if it does not.
 8. After submission, return job IDs, dependencies, log paths, and the success condition to monitor.
 
 ## Guardrails
@@ -30,7 +30,7 @@ Operate the two-stage REFINE workflow conservatively on Frontier. Read-only sche
 - Avoid launching a full pipeline if completed preparation artifacts already match the intended manifest.
 - Do not overwrite a run directory containing results unless the user explicitly chooses that outcome.
 - Do not cancel pending/running jobs without explicit authorization and exact job IDs.
-- Keep Stage 1 and Stage 2 data, run directories, and resume environment variables distinct.
+- Keep demo test data separate from training/validation data and preserve the released checkpoint.
 - A zero exit code establishes operational completion, not model quality. Use `$refine-evaluation` for scientific assessment.
 
 ## Output

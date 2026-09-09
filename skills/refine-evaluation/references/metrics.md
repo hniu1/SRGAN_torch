@@ -16,11 +16,8 @@ The `temperature_order_violation_fraction` is computed before optional output en
 
 | Stage | Variable | Bias | MAE | RMSE | MAE improvement vs bilinear |
 |---|---:|---:|---:|---:|---:|
-| 1 | tmin | -0.00424 | 0.20975 | 0.45071 | 59.78% |
-| 1 | tmax | 0.00479 | 0.20073 | 0.43065 | 59.82% |
-| 1 | prcp | -0.00457 | 0.27845 | 0.99116 | 38.55% |
 | 2 | tmin | -0.00102 | 0.04966 | 0.16798 | 75.37% |
 | 2 | tmax | 0.00139 | 0.04873 | 0.15347 | 75.78% |
 | 2 | prcp | -0.00094 | 0.04954 | 0.31374 | 63.22% |
 
-These are interpolation-style results on the repository's held-out 1990 Daymet split. They are not an end-to-end 1-degree-to-1/24-degree cascade evaluation and should not be presented as such.
+These are held-out 1990 Daymet results for the single 6× route. They do not establish skill on another dataset or a modified model.

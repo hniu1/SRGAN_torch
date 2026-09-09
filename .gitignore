@@ -13,3 +13,10 @@ artifacts/
 .pytest_cache/
 archive/
 
+
+daymet/data/
+daymet/dem/
+daymet/prepared/shared/
+checkpoints/*.pt
+dist/
+docs/reference_1990/*.npz

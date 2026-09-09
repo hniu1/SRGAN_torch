@@ -1,0 +1,95 @@
+{
+  "format_version": 3,
+  "storage_layout": "netcdf_patch_index",
+  "stage": 2,
+  "variables": [
+    "tmin",
+    "tmax",
+    "prcp"
+  ],
+  "scale_factor": 6,
+  "lr_resolution_degrees": 0.25,
+  "hr_resolution_degrees": 0.041666666666666664,
+  "lr_shape": [
+    228,
+    516
+  ],
+  "hr_shape": [
+    1368,
+    3096
+  ],
+  "splits": {
+    "train": {
+      "years": [],
+      "samples": 0
+    },
+    "val": {
+      "years": [],
+      "samples": 0
+    },
+    "test": {
+      "years": [
+        1990
+      ],
+      "samples": 365
+    }
+  },
+  "year_lengths": {
+    "1990": 365
+  },
+  "transforms": {
+    "tmin": {
+      "name": "tmin",
+      "kind": "standard",
+      "mean": 7.5141470802526875,
+      "std": 13.604302792257563
+    },
+    "tmax": {
+      "name": "tmax",
+      "kind": "standard",
+      "mean": 11.839962105357229,
+      "std": 12.699043461719992
+    },
+    "prcp": {
+      "name": "prcp",
+      "kind": "log1p_standard",
+      "mean": 0.6872528798550401,
+      "std": 0.8470728729076148
+    }
+  },
+  "variable_metadata": {
+    "tmin": {
+      "source_units": "C",
+      "units": "degC",
+      "unit_conversion": "none",
+      "long_name": "daily minimum temperature"
+    },
+    "tmax": {
+      "source_units": "C",
+      "units": "degC",
+      "unit_conversion": "none",
+      "long_name": "daily maximum temperature"
+    },
+    "prcp": {
+      "source_units": "mm/dy",
+      "units": "mm/day",
+      "unit_conversion": "none",
+      "long_name": "daily total precipitation"
+    }
+  },
+  "static": {
+    "elevation_mean": 216.16388452492407,
+    "elevation_std": 459.4077095560144
+  },
+  "source": {
+    "data_root": "../data",
+    "dem_root": "../dem",
+    "normalization_manifest": "../normalization.json",
+    "lr_suffix": "0p25deg",
+    "hr_suffix": "trim"
+  },
+  "data_quality": {
+    "policy": "masked/nonfinite values are zero-filled after normalization and excluded per patch",
+    "negative_precipitation": "clamped to zero on read"
+  }
+}

@@ -20,7 +20,7 @@ class REFINEConfig:
     num_heads: int = 6
     window_size: int = 8
     mlp_ratio: float = 2.0
-    scale_factor: int = 4
+    scale_factor: int = 6
     static_lr_channels: int = 4
     static_hr_channels: int = 4
     variable_dropout: float = 0.1

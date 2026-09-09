@@ -23,17 +23,17 @@ from refine_downscaling.transforms import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_mv_1980_1990"))
-    parser.add_argument("--checkpoint", type=Path, default=Path("artifacts/runs/refine_stage1_v1/best.pt"))
+    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared"))
+    parser.add_argument("--checkpoint", type=Path, default=Path("checkpoints/refine_6x.pt"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--input", action="append", required=True, metavar="VARIABLE=PATH",
         help="Repeat once per model variable; prcp files may contain a variable named pr",
     )
-    parser.add_argument("--start-date", default="1980-01-01")
+    parser.add_argument("--start-date", default="1990-01-01")
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--end-index", type=int, help="Exclusive; defaults to all common timesteps")
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--amp", action="store_true")
     parser.add_argument("--format", choices=["netcdf", "npy"], default="netcdf")
     parser.add_argument("--enforce-temperature-order", action="store_true")
@@ -53,7 +53,7 @@ def parse_inputs(values: list[str]) -> dict[str, Path]:
 
 
 def resolve_nc_variable(dataset, model_name: str):
-    candidates = [model_name]
+    candidates = [model_name, f"{model_name}_dy"]
     if model_name in {"prcp", "precip", "precipitation"}:
         candidates.extend(["pr", "precipitation"])
     for candidate in candidates:
@@ -130,11 +130,19 @@ class NetcdfWriter:
 
 def main() -> None:
     args = build_parser().parse_args()
+    if args.output.exists():
+        raise FileExistsError(f"Output already exists: {args.output}")
+    if args.batch_size < 1:
+        raise ValueError("batch-size must be positive")
     input_paths = parse_inputs(args.input)
     manifest = json.loads((args.data_dir / "manifest.json").read_text())
     specs = specs_from_manifest(manifest)
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     config = REFINEConfig.from_dict(checkpoint["model_config"])
+    if config.scale_factor != 6 or int(manifest["scale_factor"]) != 6:
+        raise ValueError("This demo requires a 6x checkpoint and manifest")
+    if checkpoint.get("data_manifest", {}).get("transforms", manifest["transforms"]) != manifest["transforms"]:
+        raise ValueError("Checkpoint and manifest normalization differ")
     missing = set(config.variable_names) - set(input_paths)
     extra = set(input_paths) - set(config.variable_names)
     if missing or extra:
@@ -170,16 +178,34 @@ def main() -> None:
             raise RuntimeError("netCDF4 is required to read GCM inputs") from exc
         readers = {}
         source_names = {}
+        alignment = {}
         lengths = []
         for name in config.variable_names:
             dataset = stack.enter_context(Dataset(input_paths[name]))
             variable, source_name = resolve_nc_variable(dataset, name)
             if tuple(variable.shape[-2:]) != lr_shape:
                 raise ValueError(f"{name} grid {variable.shape[-2:]} does not match model LR grid {lr_shape}")
+            from refine_downscaling.prepare import _canonical_units
+            _, conversion = _canonical_units(name, str(getattr(variable, "units", "")))
+            if conversion != "none":
+                raise ValueError(f"{name}: inference requires Celsius, not Kelvin")
+            for key in ("lat", "lon", "time"):
+                if key in dataset.variables:
+                    coordinate = dataset.variables[key]
+                    values = np.asarray(coordinate[:])
+                    attributes = (getattr(coordinate, "units", None), getattr(coordinate, "calendar", None))
+                    if key in alignment:
+                        reference, reference_attributes = alignment[key]
+                        if not np.array_equal(reference, values) or attributes != reference_attributes:
+                            raise ValueError(f"{name}: {key} coordinates differ across inputs")
+                    else:
+                        alignment[key] = (values, attributes)
             readers[name] = variable
             source_names[name] = source_name
             lengths.append(int(variable.shape[0]))
-        available = min(lengths)
+        if len(set(lengths)) != 1:
+            raise ValueError(f"Input time lengths differ: {lengths}")
+        available = lengths[0]
         end = available if args.end_index is None else min(args.end_index, available)
         if args.start_index < 0 or end <= args.start_index:
             raise ValueError(f"Invalid index range [{args.start_index}, {end}) for {available} samples")
@@ -207,7 +233,11 @@ def main() -> None:
                         )
                         for name in config.variable_names
                     ], axis=1)
-                    raw = np.nan_to_num(raw, nan=0.0)
+                    if not np.isfinite(raw).all():
+                        raise ValueError("Inference inputs contain missing/nonfinite values")
+                    for channel, name in enumerate(config.variable_names):
+                        if name == "prcp" and np.any(raw[:, channel] < 0):
+                            raise ValueError("Inference precipitation must be nonnegative")
                     normalized = np.stack([
                         transform_channels_numpy(sample, config.variable_names, specs) for sample in raw
                     ])

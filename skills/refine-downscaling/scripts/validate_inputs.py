@@ -18,11 +18,11 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ALIASES = {
-    "tmin": ("tmin",),
-    "tmax": ("tmax",),
-    "prcp": ("prcp", "pr", "precipitation"),
+    "tmin": ("tmin", "tmin_dy"),
+    "tmax": ("tmax", "tmax_dy"),
+    "prcp": ("prcp", "prcp_dy", "pr", "precipitation"),
 }
-EXPECTED_SHAPES = {"stage1": (57, 129), "stage2": (228, 516)}
+EXPECTED_SHAPES = {"stage2": (228, 516)}
 CELSIUS_UNITS = {
     "c", "degc", "degree_celsius", "degrees_celsius", "degree c", "degrees c", "celsius"
 }
@@ -146,7 +146,7 @@ def inspect_input(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--stage", choices=sorted(EXPECTED_SHAPES), required=True)
+    parser.add_argument("--stage", choices=sorted(EXPECTED_SHAPES), default="stage2")
     parser.add_argument("--input", action="append", default=[], metavar="VARIABLE=PATH")
     parser.add_argument(
         "--strict",

@@ -1,0 +1,106 @@
+{
+  "assets": [
+    {
+      "path": "daymet/data/Daymet_ERA5_prcp_dy_1990_0p25deg.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_prcp_dy_1990_0p25deg.nc",
+      "bytes": 124081544,
+      "sha256": "d312d990d091c06e5019cdebd158e1ea7f62ba19d4458afd41484a048e4c0cec"
+    },
+    {
+      "path": "daymet/data/Daymet_ERA5_prcp_dy_1990_trim.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_prcp_dy_1990_trim.nc",
+      "bytes": 6266336448,
+      "sha256": "ce9bfa80e1757b5b93e8bd8ef372359f2cc707ec1dd235eb9b286532c58ca29d"
+    },
+    {
+      "path": "daymet/data/Daymet_ERA5_tmax_dy_1990_0p25deg.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_tmax_dy_1990_0p25deg.nc",
+      "bytes": 125958059,
+      "sha256": "31238ebe7ea515f008adefd7360e2f6a1fbb73a764a197cf8a22b6742e128915"
+    },
+    {
+      "path": "daymet/data/Daymet_ERA5_tmax_dy_1990_trim.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_tmax_dy_1990_trim.nc",
+      "bytes": 6266336448,
+      "sha256": "ef90e2fb5cba77532d74fb5cd5eecbfa4a83c1c010610e7544d0be1e25df6c90"
+    },
+    {
+      "path": "daymet/data/Daymet_ERA5_tmin_dy_1990_0p25deg.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_tmin_dy_1990_0p25deg.nc",
+      "bytes": 125162956,
+      "sha256": "b35b0525dbd0974f35ba42dd9731fb6ae3560320751f918e38a4ce28a200af19"
+    },
+    {
+      "path": "daymet/data/Daymet_ERA5_tmin_dy_1990_trim.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/data/Daymet_ERA5_tmin_dy_1990_trim.nc",
+      "bytes": 6266336448,
+      "sha256": "0e8176718578393a8a6cff51cfebaf41b0fc3436c0873ab858519d33cc8f843c"
+    },
+    {
+      "path": "daymet/dem/VICa_DEM_0p25deg_fill0.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/DEM/final-elev/VICa_DEM_0p25deg_fill0.nc",
+      "bytes": 369023,
+      "sha256": "300baf45f11f83ce0e7cc980b57435f91ff07b912b4a09398a5dcdb54876dd48"
+    },
+    {
+      "path": "daymet/dem/VICa_DEM_trim_fill0.nc",
+      "source": "/lustre/orion/cli138/proj-shared/dr6/NA-Downscaling/DEM/final-elev/VICa_DEM_trim_fill0.nc",
+      "bytes": 10023798,
+      "sha256": "bb189b0072d56391bf1e81bc410c534e3aa7a9b3b2a33e2ec532a5a4f5873a5f"
+    },
+    {
+      "path": "daymet/prepared/shared/coordinates_hr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/coordinates_hr.npy",
+      "bytes": 33882752,
+      "sha256": "9c1405727635fe5b91dcdf65abcd6810f5638ed3734320f50f9a24ea6b879047"
+    },
+    {
+      "path": "daymet/prepared/shared/coordinates_lr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/coordinates_lr.npy",
+      "bytes": 941312,
+      "sha256": "3b0c114dce0a4b35ae39c9be6e3e74f705d56d0db7d4db1dcdef15cf363cbb6c"
+    },
+    {
+      "path": "daymet/prepared/shared/elevation_hr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/elevation_hr.npy",
+      "bytes": 16941440,
+      "sha256": "215dcbacca63977c1eebe8d36227eb622a69edb4f058783dfcb9d76b4fbd28f5"
+    },
+    {
+      "path": "daymet/prepared/shared/elevation_lr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/elevation_lr.npy",
+      "bytes": 470720,
+      "sha256": "9487bc9d3428a8cf4404278df6e04654cb98c875a599280dfebbb256a497287b"
+    },
+    {
+      "path": "daymet/prepared/shared/time_test.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/time_test.npy",
+      "bytes": 1588,
+      "sha256": "981880055ca22454c677c2f1fee839e79d6fdea923d2a20621cab87b8bec5210"
+    },
+    {
+      "path": "daymet/prepared/shared/valid_hr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/valid_hr.npy",
+      "bytes": 16941440,
+      "sha256": "b056e7d43d6b6eceecdb933267be2862ea17d6b910c99a2529f0e921ec415acc"
+    },
+    {
+      "path": "daymet/prepared/shared/valid_lr.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/valid_lr.npy",
+      "bytes": 470720,
+      "sha256": "8d641b6c8da770cced5486a82cc7ffe33aaecf362ce34cda029f3ae1ac691b1e"
+    },
+    {
+      "path": "checkpoints/refine_6x.pt",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/best.pt",
+      "bytes": 62997447,
+      "sha256": "2e37007658d207cf267dc867dc33890649a36c5c753d03e8810504c5f499a01a"
+    },
+    {
+      "path": "docs/reference_1990/spatial_statistics_1990.npz",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics_1990.npz",
+      "bytes": 283874804,
+      "sha256": "9561bb45fea2274d3986a031603ef59e0d22212e08809e44eeb9b90985b38b73"
+    }
+  ]
+}

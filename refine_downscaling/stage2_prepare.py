@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -46,7 +47,7 @@ def prepare_stage2_index(
     output_dir: Path,
     variables: Sequence[str],
     split_years: Mapping[str, Sequence[int]],
-    stage1_manifest_path: Path,
+    normalization_manifest_path: Path,
     data_root: Path = DEFAULT_DATA_ROOT,
     dem_root: Path = DEFAULT_DEM_ROOT,
     scale_factor: int = 6,
@@ -57,19 +58,19 @@ def prepare_stage2_index(
     output_dir = Path(output_dir).resolve()
     data_root = Path(data_root).resolve()
     dem_root = Path(dem_root).resolve()
-    stage1_manifest_path = Path(stage1_manifest_path).resolve()
+    normalization_manifest_path = Path(normalization_manifest_path).resolve()
     variables = tuple(str(name).lower() for name in variables)
     if not variables or len(set(variables)) != len(variables):
         raise ValueError("variables must be non-empty and unique")
     for split in ("train", "val", "test"):
         if split not in split_years or not split_years[split]:
             raise ValueError(f"Missing non-empty {split} years")
-    if not stage1_manifest_path.exists():
-        raise FileNotFoundError(stage1_manifest_path)
-    stage1_manifest = json.loads(stage1_manifest_path.read_text())
-    missing_transforms = set(variables) - set(stage1_manifest.get("transforms", {}))
+    if not normalization_manifest_path.exists():
+        raise FileNotFoundError(normalization_manifest_path)
+    normalization_manifest = json.loads(normalization_manifest_path.read_text())
+    missing_transforms = set(variables) - set(normalization_manifest.get("transforms", {}))
     if missing_transforms:
-        raise ValueError(f"Stage-1 transforms are missing {sorted(missing_transforms)}")
+        raise ValueError(f"Normalization transforms are missing {sorted(missing_transforms)}")
 
     all_years = sorted({int(year) for years in split_years.values() for year in years})
     year_lengths: dict[str, int] = {}
@@ -154,15 +155,15 @@ def prepare_stage2_index(
         "hr_shape": list(hr_shape),
         "splits": split_records,
         "year_lengths": year_lengths,
-        "transforms": {name: stage1_manifest["transforms"][name] for name in variables},
+        "transforms": {name: normalization_manifest["transforms"][name] for name in variables},
         "variable_metadata": variable_metadata,
         "static": {"elevation_mean": elevation_mean, "elevation_std": elevation_std},
         "source": {
-            "data_root": str(data_root),
+            "data_root": os.path.relpath(data_root, output_dir),
             "lr_suffix": LR_SUFFIX,
             "hr_suffix": HR_SUFFIX,
-            "dem_root": str(dem_root),
-            "stage1_manifest": str(stage1_manifest_path),
+            "dem_root": os.path.relpath(dem_root, output_dir),
+            "normalization_manifest": os.path.relpath(normalization_manifest_path, output_dir),
         },
         "data_quality": {
             "policy": "masked/nonfinite values are zero-filled after normalization and excluded per patch",

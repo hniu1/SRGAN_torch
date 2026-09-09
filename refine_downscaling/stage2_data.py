@@ -24,6 +24,11 @@ def load_stage2_manifest(data_dir: Path) -> dict:
     manifest = json.loads(path.read_text())
     if manifest.get("format_version") != 3 or manifest.get("storage_layout") != "netcdf_patch_index":
         raise ValueError(f"Unsupported Stage-2 manifest: {path}")
+    for key in ("data_root", "dem_root", "normalization_manifest"):
+        if key in manifest.get("source", {}):
+            value = Path(manifest["source"][key])
+            if not value.is_absolute():
+                manifest["source"][key] = str((path.parent / value).resolve())
     return manifest
 
 

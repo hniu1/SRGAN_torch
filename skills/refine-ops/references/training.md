@@ -1,42 +1,38 @@
-# Preparation and training
+# Preparation and training: 1/4° to 1/24°
 
-## Stage 1: 1 degree to 0.25 degree
+Training is optional and separate from the inference demo. Copy paired
+`Daymet_ERA5_{tmin,tmax,prcp}_dy_YEAR_{0p25deg,trim}.nc` for 1980–1989 from the
+source directory listed in `daymet/README.md` into `daymet/data/` before preparing
+training. The 1990 pairs and both DEMs are already bundled. This adds roughly
+200 GB of uncompressed source data; verify available space before copying.
 
-Pipeline scripts:
+```bash
+python pipeline_01_prepare.py --data-root daymet/data --dem-root daymet/dem \
+  --normalization-manifest daymet/normalization.json \
+  --output-dir artifacts/data/daymet_training
+```
 
-1. `pipeline_01_prepare_stage1.py`
-2. `pipeline_02_train_stage1.py`
-3. `pipeline_03_evaluate_stage1.py`
+Splits are chronological: training 1980–1987, validation 1988–1989, test 1990.
+Year-end arguments are exclusive. Preparation reuses frozen training-only
+normalization for compatibility with the pretrained checkpoint. New variables
+or a different climate/domain require explicitly fitting appropriate transforms
+on training data; this preparation command does not fit new normalization.
 
-`submit_pipeline.sh` submits the matching Slurm scripts with `afterok` dependencies. Current chronological split is training 1980-1987, validation 1988-1989, and test 1990 because the year-end arguments are exclusive.
+After authorization, submit `slurm/02_train.slurm` with the prepared training
+manifest. `submit_pipeline.sh` chains prepare/train/evaluate with dependencies.
+The test-only demo manifest cannot be used for training.
 
-Training requests 2 nodes, 4 GPU tasks per node, 6 CPUs per task, and 12 hours in `extended`. Defaults are 100 epochs, batch size 4 per process, 32 patches/day, 8 validation patches/day, core 16, halo 4, embed dimension 96, 6 groups, 6 blocks/group, 6 heads, and window 8.
+Training requests two nodes, four GPU tasks/node, six CPUs/task, and 12 hours.
+It uses core 8, halo 2 (12×12 input / 72×72 output), 8 patches/day, 4 validation
+patches/day, batch size 4/process, width 96, six groups of six blocks, six heads.
 
-Set `MV_RESUME=/exact/checkpoint.pt` to resume. Confirm the checkpoint's training state before submission.
+By default training initializes from scratch. `MV_RESUME=/path/last.pt` resumes
+full state; check optimizer, epoch and model configuration first. For a fresh
+experiment with only a compatible encoder initialization, use the Python CLI's
+`--init-backbone checkpoints/refine_6x.pt` with a new run directory. This resets
+the decoders and is not full-model fine-tuning. Full-model continuation uses
+`--resume` and an epoch limit above the saved epoch.
 
-## Stage 2: 0.25 degree to 1/24 degree
-
-Pipeline scripts:
-
-1. `pipeline_05_prepare_stage2.py`
-2. `pipeline_06_train_stage2.py`
-3. `pipeline_07_evaluate_stage2.py`
-
-`submit_stage2_pipeline.sh` submits these with `afterok` dependencies and the same chronological split. Training uses the same model width/depth and distributed resources, with 8 patches/day, 4 validation patches/day, core 8, and halo 2.
-
-Checkpoint selection order:
-
-1. If `MV_STAGE2_RESUME` is set, resume full Stage 2 state from that exact checkpoint.
-2. Otherwise initialize the compatible backbone from `MV_STAGE1_CHECKPOINT` or the default Stage 1 `best.pt`.
-3. If the Stage 1 checkpoint is missing, Stage 2 initializes from scratch and emits a warning.
-
-Backbone initialization is not resume training: optimizer, scheduler, and Stage 2 upsampling head start fresh.
-
-## Pre-submission checks
-
-- Parse the manifest and verify years, variables, shapes, units, and patch count.
-- Confirm no active job is already writing to the data/run directory.
-- Confirm sufficient storage for checkpoints, logs, and optional predictions.
-- For resume, inspect `last.pt` and training history; do not assume `best.pt` contains resumable optimizer state.
-- Review resource/time limits against the intended workload.
-- Record code revision and dirty-worktree state for reproducibility.
+Modify `refine_downscaling/model.py` for architecture experiments, preserve the
+released checkpoint, and verify 6× output geometry and checkpoint compatibility.
+Keep 1990 held out; compare new results against the frozen reference metrics.

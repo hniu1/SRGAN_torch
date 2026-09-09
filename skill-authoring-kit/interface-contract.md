@@ -8,13 +8,13 @@ Required fields:
 
 - `request_id`: caller-generated trace identifier
 - `action`: `validate`, `infer`, `evaluate`, `status`, `submit`, `resume`, or `cancel`
-- `stage`: `stage1`, `stage2`, or `cascade`
+- `stage`: `stage2` (the only 6× route)
 - `inputs`: canonical variable-to-path mappings for input-consuming actions
 - `output.path`: destination for output-producing actions
 
 Optional fields include `start_date`, `start_index`, `end_index`, `checkpoint`, evaluation controls, execution controls, `job_ids`, and `approval`.
 
-Index ranges are half-open: `start_index` is included and `end_index` is excluded. A cascade request represents two separately traceable inference runs.
+Index ranges are half-open: `start_index` is included and `end_index` is excluded.
 
 ## Result
 

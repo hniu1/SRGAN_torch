@@ -1,264 +1,117 @@
-# REFINE
+# REFINE: Frontier inference demo
 
-**Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy System**
+Downscale daily Daymet `tmin`, `tmax`, and `prcp` from **1/4° to 1/24° (6×)**,
+approximately 25 km to 4 km, using the supplied pretrained terrain-aware REFINE
+transformer. This branch contains one downscaling stage.
 
-REFINE is a terrain-aware transformer framework that jointly downscales daily
-`tmin`, `tmax`, and precipitation:
+## Start here
 
-```text
-Daymet/ERA5 or GCM at 1 degree
-       -> Stage-1 REFINE (4x) -> 0.25 degree
-       -> Stage-2 REFINE (6x) -> 1/24 degree
-```
-
-REFINE uses a shared variable-aware SwinV2 encoder, shifted-window
-attention on the low-resolution grid, PixelShuffle reconstruction, native
-high-resolution terrain fusion, and a separate decoder for every output
-variable. It is deterministic and does not use an adversarial discriminator.
-
-## Active pipeline
-
-| Step | Entry point | Frontier launcher |
-|---:|---|---|
-| 1 | `pipeline_01_prepare_stage1.py` | `slurm/01_prepare_stage1.slurm` |
-| 2 | `pipeline_02_train_stage1.py` | `slurm/02_train_stage1.slurm` |
-| 3 | `pipeline_03_evaluate_stage1.py` | `slurm/03_evaluate_stage1.slurm` |
-| 4 | `pipeline_04_downscale_stage1.py` | `slurm/04_downscale_stage1.slurm` |
-
-Submit preparation, training, and independent evaluation with dependencies:
+Run from the repository root on Frontier:
 
 ```bash
-bash submit_pipeline.sh
+source scripts/frontier_env.sh
+python scripts/check_demo.py
+mkdir -p logs
+sbatch slurm/04_infer.slurm
 ```
 
-Or submit and inspect each stage separately:
+The inference job requests one node, one GPU, and 30 minutes. It processes
+**1990-01-01** by default and writes `artifacts/demo/inference-JOBID.nc` plus a
+JSON run record. Expect about 51 MB of uncompressed output per day. Use
+`MV_END_INDEX=7 sbatch slurm/04_infer.slurm` for the first week; indexes are
+zero-based and the end is exclusive. Full-year output is about 18.5 GB before
+compression and needs a longer wall time. Submit only within your authorized
+Frontier allocation (`cli138` in these launchers).
+
+For a direct command inside an allocated GPU session:
 
 ```bash
-sbatch slurm/01_prepare_stage1.slurm
-sbatch slurm/02_train_stage1.slurm
-sbatch slurm/03_evaluate_stage1.slurm
+python pipeline_04_infer.py \
+  --input tmin=daymet/data/Daymet_ERA5_tmin_dy_1990_0p25deg.nc \
+  --input tmax=daymet/data/Daymet_ERA5_tmax_dy_1990_0p25deg.nc \
+  --input prcp=daymet/data/Daymet_ERA5_prcp_dy_1990_0p25deg.nc \
+  --output artifacts/demo/day1.nc --start-date 1990-01-01 \
+  --end-index 1 --batch-size 1 --amp --enforce-temperature-order
 ```
 
-The launchers accept these environment overrides:
+The output uses `time,y,x` dimensions, Celsius and mm/day; y/x are grid indexes,
+not geographic coordinates. The native grid coordinates remain in the Daymet
+files. Inputs must already use the trained grid and consecutive daily Gregorian
+timestamps; `--start-date` describes input index zero. No regridding occurs.
 
-```text
-MV_BASE_DIR   repository path; defaults to the submission directory
-MV_DATA_DIR   prepared dataset directory
-MV_RUN_DIR    checkpoints, history, predictions, and metrics
-```
+## Local assets and handoff
 
-## Stage 2: 0.25 degree to 1/24 degree
+- `daymet/data/`: copied 1990 coarse inputs and native fine-resolution truth.
+- `daymet/dem/`: copied DEMs at both resolutions.
+- `daymet/prepared/`: test-only manifest, terrain, coordinates, masks and time index.
+- `daymet/normalization.json`: frozen training normalization matching the checkpoint.
+- `checkpoints/refine_6x.pt`: pretrained checkpoint.
+- `docs/reference_1990/`: historical evaluation metrics and compact spatial products.
 
-Stage 2 keeps the variable-aware SwinV2 representation backbone, but does not
-reuse the 4x reconstruction head unchanged. It uses a 2x PixelShuffle stage
-followed by a 3x stage, fusing native 1/24-degree terrain at both scales. The
-default patch is deliberately smaller because a 12x12 LR context reconstructs
-a 72x72 HR field; the central 8x8 LR / 48x48 HR region is supervised.
-
-| Step | Entry point | Frontier launcher |
-|---:|---|---|
-| 5 | `pipeline_05_prepare_stage2.py` | `slurm/05_prepare_stage2.slurm` |
-| 6 | `pipeline_06_train_stage2.py` | `slurm/06_train_stage2.slurm` |
-| 7 | `pipeline_07_evaluate_stage2.py` | `slurm/07_evaluate_stage2.slurm` |
-| 8 | `pipeline_08_downscale_stage2.py` | `slurm/08_downscale_stage2.slurm` |
-
-Submit preparation, training, and evaluation in dependency order with:
+Manifest source paths resolve relative to the manifest directory. CLI paths are
+relative to the repository working directory. The package can be moved as a unit.
+Large binary assets are ignored by Git; **a Git clone alone is not the complete
+demo**. Give the team the archive produced by:
 
 ```bash
-bash submit_stage2_pipeline.sh
+python scripts/package_demo.py
 ```
 
-The preparation step validates all paired files but does not copy the roughly
-200 GB uncompressed daily archive. It writes a lightweight manifest, time
-indexes, coordinates, and LR/HR terrain arrays. Each worker opens the three
-variables independently and reads only the aligned LR and HR patch requested
-for that sample. Missing values are masked, finite negative precipitation is
-clamped to zero, and Kelvin temperature sources are converted to Celsius on
-read.
+This includes current source, skills, data, weights and reference diagnostics,
+excluding Git internals, old artifacts, archives and logs. See
+[daymet/README.md](daymet/README.md) for provenance and how to restore the assets
+on Frontier. Run `python scripts/check_demo.py` after unpacking.
 
-The input is `*_0p25deg.nc` and the fine-resolution truth is `*_trim.nc`. The
-archive's `*_0p25degto0p0416deg.nc` files are pre-interpolated coarse fields;
-they are useful as a baseline, but are deliberately not used as training
-targets.
+## Experiment workflow
 
-The Stage-2 launcher warm-starts the compatible variable stem, seasonal/static
-fusion, and Swin encoder from `artifacts/runs/refine_stage1_v1/best.pt`. The 6x
-upsampling stages and variable decoders start fresh; use `MV_STAGE1_CHECKPOINT`
-to choose another source checkpoint. Use `MV_STAGE2_RESUME` to resume a Stage-2
-checkpoint instead. Stage-2 paths can be overridden with `MV_STAGE2_DATA_DIR`
-and `MV_STAGE2_RUN_DIR`.
-
-Initial training uses observed paired 0.25-degree fields as inputs and
-1/24-degree fields as targets, which measures the isolated second-stage skill.
-For the strongest final 1-degree-to-1/24-degree cascade, a later fine-tuning
-round should mix in Stage-1-generated 0.25-degree inputs to reduce the small
-train/inference distribution shift.
-
-The completed independent 1990 evaluation is documented in
-[`docs/STAGE2_EVALUATION_1990.md`](docs/STAGE2_EVALUATION_1990.md). Stage 2
-improves MAE over bilinear interpolation by 75.37% for `tmin`, 75.78% for
-`tmax`, and 63.22% for precipitation.
-
-Step 4 is intentionally not included in `submit_pipeline.sh`: it produces a
-multi-decade GCM dataset and should be submitted only after the independent
-test metrics have been reviewed. Its launcher currently targets the aligned
-ACCESS-CM2 1980-2019 files and can be redirected with `MV_GCM_DIR` and
-`MV_GCM_OUTPUT`. The Python entry point accepts arbitrary aligned inputs through
-repeated `--input VARIABLE=PATH` arguments and writes NetCDF4 or NPY output.
-
-## Chronological data split
-
-The default preparation deliberately avoids random day splitting:
-
-| Split | Years | Purpose |
-|---|---|---|
-| Training | 1980-1987 | Parameter optimization and normalization statistics |
-| Validation | 1988-1989 | Checkpoint selection and early stopping |
-| Test | 1990 | Independent final evaluation |
-
-Arrays remain in physical units on disk and are memory mapped during training.
-Temperature uses standard scaling. Precipitation uses `log1p` followed by
-standard scaling. Transformation parameters are fitted only on training years
-and stored in `manifest.json` rather than a Python pickle.
-
-Preparation validates units from each NetCDF variable. The current Daymet
-temperature files declare Celsius and are retained as Celsius; a future source
-declaring Kelvin is converted to Celsius exactly once. Masked and non-finite
-values are imputed on disk and excluded through the valid-data mask. Finite
-negative precipitation is clamped to zero before `log1p`. Counts of missing
-values and precipitation corrections are recorded per variable under
-`data_quality` in the manifest.
-
-Each variable is stored independently, while time, terrain, and coordinates are
-shared:
-
-```text
-daymet_mv_1980_1990/
-├── manifest.json
-├── shared/{time_*.npy,elevation_*.npy,coordinates_*.npy}
-└── variables/
-    ├── tmin/{lr_*.npy,hr_*.npy,valid_*.npy,complete.json}
-    ├── tmax/{lr_*.npy,hr_*.npy,valid_*.npy,complete.json}
-    └── prcp/{lr_*.npy,hr_*.npy,valid_*.npy,complete.json}
-```
-
-The patch dataset opens these files once as read-only memory maps. For each
-sample it reads the same day and spatial crop from each selected variable, then
-stacks only those small crops in memory. Adding a prepared variable therefore
-does not rewrite tmin, tmax, precipitation, or the shared arrays. For example:
+1. Validate the package and input data.
+2. Run one-day inference, then increase the interval as needed.
+3. Evaluate against the included 1990 truth, reporting the interval and bilinear baseline:
 
 ```bash
-python pipeline_01_prepare_stage1.py \
-  --output-dir artifacts/data/daymet_mv_1980_1990 \
-  --variables humidity
+python pipeline_03_evaluate.py --data-dir daymet/prepared \
+  --checkpoint checkpoints/refine_6x.pt --output-dir artifacts/demo/evaluation \
+  --split test --max-days 1 --batch-size 1 --amp --enforce-temperature-order
 ```
 
-Training can select any prepared subset and its channel order with
-`--variables`. Repeating preparation skips complete variables by default;
-`--overwrite` rebuilds only variables explicitly named by `--variables`.
-
-The verified source locations used by the default launcher are:
-
-```text
-/lustre/orion/proj-shared/cli138/dr6/NA-Downscaling/data
-/lustre/orion/proj-shared/cli138/dr6/NA-Downscaling/DEM/final-elev
-```
-
-Prepared data are written below `artifacts/data/`; run products are written
-below `artifacts/runs/`. Both paths are ignored by Git.
-
-## Patch geometry
-
-The default training sample is:
-
-```text
-24x24 LR context -> 96x96 HR prediction
-   central 16x16 -> central 64x64 supervised core
-```
-
-The four-cell LR halo supplies real surrounding context. Loss outside the
-central core is masked, preventing patch boundaries from becoming a learned
-signal. Random patches can include domain boundaries using reflection padding.
-Validation uses deterministic, spatially distributed origins.
-
-Full-domain inference is supported because SwinV2 uses window-relative rather
-than full-image absolute positions. The 57x129 LR domain is internally padded
-to attention-window multiples and the padding is removed before reconstruction.
-
-## Model structure
-
-1. Each dynamic variable has its own convolutional tokenizer and learned
-   variable identity.
-2. Local cross-variable attention creates a shared atmospheric feature at each
-   LR grid cell.
-3. Residual SwinV2 groups learn spatial relationships using 8x8 shifted
-   windows.
-4. Two PixelShuffle stages reconstruct the grid: 2x + 2x for Stage 1, or 2x +
-   3x for Stage 2.
-5. HR elevation, elevation anomaly, coordinates, and the valid-data mask are
-   fused during reconstruction.
-6. Variable-specific decoders predict corrections to bilinearly upscaled input
-   fields. The correction layers start at zero.
-
-The default Frontier launcher uses six residual Swin groups with six blocks per
-group, 96 features, and six attention heads. Channel dropout makes the encoder
-less dependent on every input variable being present.
-
-## Objectives
-
-The primary objective combines normalized smooth-L1, MAE, and spatial-gradient
-losses for every variable. It also includes:
-
-- a `tmin <= tmax` consistency penalty;
-- a coarse-grid precipitation conservation penalty; and
-- central-core and valid-data masks.
-
-Evaluation reports bias, MAE, and RMSE in physical units for every variable,
-along with improvement over bilinear interpolation and the temperature-order
-violation rate. Predictions and a JSON summary are saved in the run directory.
-
-## Local verification
-
-The pinned direct dependencies are in [`requirements.txt`](requirements.txt).
-[`requirements-lock.txt`](requirements-lock.txt) records the complete Python
-package set currently installed in the shared environment, including optional
-analysis packages not imported by this pipeline. The tested stack is Python
-3.12.12, ROCm 6.4.1, and PyTorch 2.8.0+rocm6.4.
-On Frontier, rebuild it with:
+4. Produce comparison plots from those evaluation predictions:
 
 ```bash
-module load PrgEnv-gnu/8.6.0
-module load rocm/6.4.1
-module load craype-accel-amd-gfx90a
-module load miniforge3/23.11.0-0
-
-conda create --prefix /path/to/refine-rocm python=3.12.12 pip=26.0.1 -y
-conda activate /path/to/refine-rocm
-python -m pip install -r requirements.txt
+python utility_plot_spatial_statistics.py --data-dir daymet/prepared \
+  --evaluation-dir artifacts/demo/evaluation --split test --tile-rows 21
 ```
 
-ROCm, the Cray programming environment, Slurm, and system libraries are supplied
-host dependencies and are not installed by `requirements.txt`. The repository
-uses bundled Natural Earth GeoJSON boundaries, so Cartopy is not required.
+A one-day smoke test is not the historical full-year evaluation. Reference metrics
+and their provenance are in [docs/EVALUATION_1990.md](docs/EVALUATION_1990.md).
+For full-year metrics without predictions use `slurm/03_evaluate.slurm`.
+Use a fresh output directory for each experiment.
 
-Verify the rebuilt environment with:
+## Team skills and training
+
+[skills/README.md](skills/README.md) routes inference, evaluation, and Frontier
+operations. [skill-authoring-kit](skill-authoring-kit/README.md) supplies structured
+request/result schemas and a model registry for agent integration. Its `stage2`
+identifier is retained for checkpoint compatibility and means the sole 6× route.
+
+Training remains available through `pipeline_01_prepare.py`,
+`pipeline_02_train.py`, and the operations skill's
+[training reference](skills/refine-ops/references/training.md). The demo includes
+only held-out 1990 data; training requires copying the 1980–1989 paired files.
+The training launcher starts from scratch unless `MV_RESUME` is supplied; it has
+no dependency on a 100→25 km model. Model changes belong in
+`refine_downscaling/model.py`; preserve the released checkpoint for comparison.
+
+## Environment and verification
+
+`scripts/frontier_env.sh` activates the existing Frontier environment. The tested
+stack is Python 3.12, ROCm 6.4.1 and PyTorch 2.8.0+rocm6.4. Direct dependencies
+are pinned in `requirements.txt`; `requirements-lock.txt` records the original
+full environment. Set `REFINE_ENV` to another compatible environment if needed.
 
 ```bash
-python -m unittest discover -s tests -v
+OMP_NUM_THREADS=2 python -m unittest discover -s tests -v
 ```
 
-## Agent integration
-
-Two complementary packages support agentic use of the pipeline:
-
-- [`skill-authoring-kit`](skill-authoring-kit/README.md) contains framework-neutral capability, data, interface, permission, schema, registry, and template documents for teams building their own agent skills.
-- [`skills`](skills/) contains ready-to-use skills for inference, evaluation/visualization, and Frontier operations.
-
-Keep these capabilities separate so read-only inspection does not imply authorization to submit jobs, cancel jobs, overwrite artifacts, or delete data.
-
-## Legacy baseline
-
-The previous SRGAN source, launchers, documentation, utilities, generated
-checkpoints, arrays, and logs are preserved under
-[`archive/srgan_v2`](archive/srgan_v2/ARCHIVE_NOTICE.md). The active repository
-root now contains only the REFINE pipeline.
+Launchers accept `MV_BASE_DIR`, `MV_DATA_DIR`, `MV_RUN_DIR`, and `MV_CHECKPOINT`.
+Inference also accepts `MV_TMIN_INPUT`, `MV_TMAX_INPUT`, `MV_PRCP_INPUT`,
+`MV_OUTPUT`, `MV_START_INDEX`, and `MV_END_INDEX` (for the bundled 1990 year).

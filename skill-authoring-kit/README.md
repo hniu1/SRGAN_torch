@@ -1,37 +1,16 @@
-# REFINE agent authoring kit
+# Agent integration kit
 
-This folder is the framework-neutral handoff package for teams building agent skills or tools around REFINE—the Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy System. It describes stable capabilities and contracts without requiring Codex's skill format.
+This package describes the sole REFINE 6× inference route on Frontier.
+Start with the repository README, then use:
 
-Ready-to-use Codex skill packages live in [`../skills`](../skills). The two folders have different purposes:
+- `model-registry.json`: checkpoint identity, grid and reference metrics.
+- `data-contract.md`: input/output requirements.
+- `interface-contract.md`: structured request and result fields.
+- `schemas/`: JSON schemas (the legacy identifier `stage2` means the single 6× model).
+- `examples/`: illustrative requests/results, not execution records.
+- `capability-catalog.md`: routing to maintained entry points and skills.
+- `operations-and-permissions.md`: scheduler and artifact authorization.
+- `templates/`: optional starting point for team-specific skills.
 
-- `skill-authoring-kit/`: source specifications, schemas, examples, and templates to adapt to any agent framework.
-- `skills/`: installable instructions and helper scripts that an agent can use directly.
-
-## Package map
-
-| File | Purpose |
-|---|---|
-| `capability-catalog.md` | Skill boundaries, triggers, inputs, and outputs |
-| `data-contract.md` | Variables, units, grids, quality rules, and scale transitions |
-| `interface-contract.md` | Recommended request/result/error protocol |
-| `operations-and-permissions.md` | Read-only versus approval-required actions |
-| `model-registry.json` | Machine-readable stage/checkpoint/metric registry |
-| `schemas/*.schema.json` | JSON validation schemas for agent requests and results |
-| `examples/*.json` | Concrete protocol examples |
-| `templates/*` | Starting points for another agent framework |
-
-## Recommended integration
-
-1. Expose three separate capabilities: downscaling inference, evaluation, and HPC operations.
-2. Validate requests against `schemas/downscaling-request.schema.json` before generating commands.
-3. Validate input data against `data-contract.md` and the selected registry stage.
-4. Make filesystem inspection and Slurm status read-only tools.
-5. Put job submission, cancellation, overwrite, and deletion behind explicit human approval.
-6. Emit `schemas/downscaling-result.schema.json` records for traceability.
-7. Pin checkpoint hashes in the deployment configuration and update the registry only after evaluation.
-
-Paths in the registry are relative to the repository root unless marked otherwise. Site-specific environment paths belong in deployment configuration, not in the scientific request.
-
-## Runtime environment
-
-Use the repository-level [`../requirements.txt`](../requirements.txt) to build the minimal tested Python runtime. Use [`../requirements-lock.txt`](../requirements-lock.txt) only when reproducing the larger shared Frontier Python package set. Both target Python 3.12.12 and PyTorch 2.8.0+rocm6.4; Frontier's ROCm modules, Cray environment, Slurm client, and system libraries remain host prerequisites.
+The ready-to-use skills are in `../skills/`. Training guidance remains in
+`../skills/refine-ops/references/training.md`.

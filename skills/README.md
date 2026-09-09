@@ -5,7 +5,7 @@ Intelligence for Natural and Energy System**.
 
 | Skill | Use it for |
 |---|---|
-| [`refine-downscaling`](refine-downscaling/SKILL.md) | Validate inputs and run Stage 1, Stage 2, or cascade inference |
+| [`refine-downscaling`](refine-downscaling/SKILL.md) | Validate inputs and run single-stage 6× inference |
 | [`refine-evaluation`](refine-evaluation/SKILL.md) | Evaluate checkpoints, summarize metrics, and produce standard spatial plots |
 | [`refine-ops`](refine-ops/SKILL.md) | Prepare/train models and inspect or operate Frontier Slurm jobs |
 

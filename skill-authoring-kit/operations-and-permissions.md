@@ -25,7 +25,7 @@ Approval should name the exact action, job IDs or output paths, and material res
 - Regrid or convert calendars without recording the method.
 - Treat a completed job as a validated model.
 - Publish or register a checkpoint based only on training loss.
-- Present Stage 2 evaluation using true 0.25-degree Daymet inputs as cascade performance using Stage 1 predictions.
+- Present a partial demo or a modified model as reproducing the full-year reference metrics.
 
 ## Reproducibility record
 
