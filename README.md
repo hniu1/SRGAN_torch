@@ -1,9 +1,15 @@
 # REFINE: Resolution-Enhancement Framework Integrating Artificial Intelligence for Natural and Energy Systems
+
 ## Frontier inference demo
 
 Downscale daily Daymet `tmin`, `tmax`, and `prcp` from **1/4° to 1/24° (6×)**,
 approximately 25 km to 4 km, using the supplied pretrained terrain-aware REFINE
 transformer. This branch contains one downscaling stage.
+
+**Repository authors:** Haoran Niu and Deeksha Rastogi.
+
+**Data provenance:** Original Daymet data ([Thornton et al.](https://daymet.ornl.gov))
+are available at 1 km resolution. For this demo, those data have been coarsened to approximately 4 km (1/24°) and 25 km (1/4°), providing the fine-resolution reference and coarse model inputs, respectively.
 
 ## Start here
 
