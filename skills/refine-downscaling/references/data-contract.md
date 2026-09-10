@@ -8,7 +8,12 @@ Inference does not convert Kelvin. Stop on nonfinite inputs rather than silently
 changing the missing-data policy. Preparation/training mask missing fields and
 clamp finite negative precipitation under their documented training policy.
 
-Use the copied files under `daymet/data/`. Check units, identical time coverage,
+Daymet data are already staged at
+`/lustre/orion/world-shared/cli138/haoran/GM_Downscaling_demo1/daymet`.
+Use its `data/` files and `prepared/manifest.json`; the matching pretrained model
+is `artifacts/runs/refine_stage2_v1/best.pt` relative to the shared demo root.
+Original 1 km Daymet data (Thornton et al., 2021) were coarsened to approximately
+4 km and 25 km for this workflow. Check units, identical time coverage,
 and native coordinate alignment; shape alone cannot prove grid identity.
 `--start-date 1990-01-01` labels index zero for the bundled files. Arbitrary
 calendars and irregular daily intervals are not supported by the inference CLI.

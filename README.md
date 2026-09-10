@@ -13,10 +13,18 @@ are available at 1 km resolution. For this demo, those data have been coarsened 
 
 ## Start here
 
-Run from the repository root on Frontier:
+The Daymet demo data are already staged on Frontier at
+`/lustre/orion/world-shared/cli138/haoran/GM_Downscaling_demo1/daymet`.
+Pretrained models are under the same demo directory's `artifacts/` folder;
+use `artifacts/runs/refine_stage2_v1/best.pt` for the 25 → 4 km workflow.
+No additional data download or preparation is needed for this demo.
+
+Run from the shared demo repository root on Frontier:
 
 ```bash
+cd /lustre/orion/world-shared/cli138/haoran/GM_Downscaling_demo1
 source scripts/frontier_env.sh
+export MV_CHECKPOINT="$PWD/artifacts/runs/refine_stage2_v1/best.pt"
 python scripts/check_demo.py
 mkdir -p logs
 sbatch slurm/04_infer.slurm
@@ -34,6 +42,8 @@ For a direct command inside an allocated GPU session:
 
 ```bash
 python pipeline_04_infer.py \
+  --data-dir daymet/prepared \
+  --checkpoint artifacts/runs/refine_stage2_v1/best.pt \
   --input tmin=daymet/data/Daymet_ERA5_tmin_dy_1990_0p25deg.nc \
   --input tmax=daymet/data/Daymet_ERA5_tmax_dy_1990_0p25deg.nc \
   --input prcp=daymet/data/Daymet_ERA5_prcp_dy_1990_0p25deg.nc \
@@ -46,19 +56,25 @@ not geographic coordinates. The native grid coordinates remain in the Daymet
 files. Inputs must already use the trained grid and consecutive daily Gregorian
 timestamps; `--start-date` describes input index zero. No regridding occurs.
 
-## Local assets and handoff
+## Shared assets and portable handoff
 
-- `daymet/data/`: 1980–1990 coarse inputs and native fine-resolution truth.
+The following paths are relative to
+`/lustre/orion/world-shared/cli138/haoran/GM_Downscaling_demo1`:
+
+- `daymet/data/`: 1980–1990 coarse inputs and coarsened 4 km reference fields.
 - `daymet/dem/`: copied DEMs at both resolutions.
 - `daymet/prepared/`: full Stage 2 manifest, terrain, coordinates, masks and train/val/test time indexes.
 - `daymet/normalization.json`: frozen training normalization matching the checkpoint.
-- `checkpoints/refine_6x.pt`: pretrained checkpoint.
+- `artifacts/runs/refine_stage2_v1/best.pt`: pretrained 6× model for inference.
+- `artifacts/runs/refine_stage2_v1/last.pt`: saved training state for resuming.
+- `checkpoints/refine_6x.pt`: identical inference checkpoint copy used by the portable package and default CLI settings.
 - `docs/reference_1990/`: historical evaluation metrics and compact spatial products.
 
 Manifest source paths resolve relative to the manifest directory. CLI paths are
 relative to the repository working directory. The package can be moved as a unit.
 Large binary assets are ignored by Git; **a Git clone alone is not the complete
-demo**. Give the team the archive produced by:
+demo**. The team can use the shared Frontier assets directly. For a separate,
+self-contained copy, give the team the archive produced by:
 
 ```bash
 python scripts/package_demo.py
@@ -76,7 +92,7 @@ excluding Git internals, old artifacts, archives and logs. See
 
 ```bash
 python pipeline_03_evaluate.py --data-dir daymet/prepared \
-  --checkpoint checkpoints/refine_6x.pt --output-dir artifacts/demo/evaluation \
+  --checkpoint artifacts/runs/refine_stage2_v1/best.pt --output-dir artifacts/demo/evaluation \
   --split test --max-days 1 --batch-size 1 --amp --enforce-temperature-order
 ```
 
@@ -89,7 +105,8 @@ python utility_plot_spatial_statistics.py --data-dir daymet/prepared \
 
 A one-day smoke test is not the historical full-year evaluation. Reference metrics
 and their provenance are in [docs/EVALUATION_1990.md](docs/EVALUATION_1990.md).
-For full-year metrics without predictions use `slurm/03_evaluate.slurm`.
+For full-year metrics without predictions use `slurm/03_evaluate.slurm` with
+`MV_CHECKPOINT` exported as in the quickstart.
 Use a fresh output directory for each experiment.
 
 ## Team skills and training
@@ -124,7 +141,9 @@ Inference also accepts `MV_TMIN_INPUT`, `MV_TMAX_INPUT`, `MV_PRCP_INPUT`,
 `MV_OUTPUT`, `MV_START_INDEX`, and `MV_END_INDEX` (for the bundled 1990 year).
 
 Data inputs must use the repository-local `daymet/` assets: `daymet/data/`,
-`daymet/dem/`, and `daymet/prepared/` for all workflows. Use `checkpoints/refine_6x.pt` for the released model.
+`daymet/dem/`, and `daymet/prepared/` for all workflows. Use
+`artifacts/runs/refine_stage2_v1/best.pt` in the shared demo, or the identical
+`checkpoints/refine_6x.pt` copy in the portable package, for the released model.
 Original paths in provenance records are not runtime inputs or fallbacks.
 The shared Frontier software environment supplies dependencies only.
 
