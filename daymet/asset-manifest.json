@@ -101,6 +101,18 @@
       "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/runs/refine_stage2_v1/test_1990/spatial_statistics_1990.npz",
       "bytes": 283874804,
       "sha256": "9561bb45fea2274d3986a031603ef59e0d22212e08809e44eeb9b90985b38b73"
+    },
+    {
+      "path": "daymet/prepared/shared/time_train.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/time_train.npy",
+      "bytes": 11816,
+      "sha256": "4b43592d2a592927982565e8bc89459d8ff9ebd6cf7ed7e8dab4958ae51e9a4e"
+    },
+    {
+      "path": "daymet/prepared/shared/time_val.npy",
+      "source": "/lustre/orion/cli138/proj-shared/7hn/SRGAN_patch_training/artifacts/data/daymet_mv_stage2_1980_1990/shared/time_val.npy",
+      "bytes": 3052,
+      "sha256": "f75fc4ccbb6cf75cedefceaae1b1b414054e9456966520e86b7ce70d4ee12135"
     }
   ]
 }

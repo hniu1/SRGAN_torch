@@ -48,9 +48,9 @@ timestamps; `--start-date` describes input index zero. No regridding occurs.
 
 ## Local assets and handoff
 
-- `daymet/data/`: copied 1990 coarse inputs and native fine-resolution truth.
+- `daymet/data/`: 1980–1990 coarse inputs and native fine-resolution truth.
 - `daymet/dem/`: copied DEMs at both resolutions.
-- `daymet/prepared/`: test-only manifest, terrain, coordinates, masks and time index.
+- `daymet/prepared/`: full Stage 2 manifest, terrain, coordinates, masks and train/val/test time indexes.
 - `daymet/normalization.json`: frozen training normalization matching the checkpoint.
 - `checkpoints/refine_6x.pt`: pretrained checkpoint.
 - `docs/reference_1990/`: historical evaluation metrics and compact spatial products.
@@ -66,8 +66,7 @@ python scripts/package_demo.py
 
 This includes current source, skills, data, weights and reference diagnostics,
 excluding Git internals, old artifacts, archives and logs. See
-[daymet/README.md](daymet/README.md) for provenance and how to restore the assets
-on Frontier. Run `python scripts/check_demo.py` after unpacking.
+[daymet/README.md](daymet/README.md) for local asset paths and provenance. Run `python scripts/check_demo.py` after unpacking.
 
 ## Experiment workflow
 
@@ -103,7 +102,8 @@ identifier is retained for checkpoint compatibility and means the sole 6× route
 Training remains available through `pipeline_01_prepare.py`,
 `pipeline_02_train.py`, and the operations skill's
 [training reference](skills/refine-ops/references/training.md). The demo includes
-only held-out 1990 data; training requires copying the 1980–1989 paired files.
+the full Stage 2 index at `daymet/prepared/` and 1980–1990 paired inputs in
+`daymet/data/`. All workflows use this same prepared directory.
 The training launcher starts from scratch unless `MV_RESUME` is supplied; it has
 no dependency on a 100→25 km model. Model changes belong in
 `refine_downscaling/model.py`; preserve the released checkpoint for comparison.
@@ -122,6 +122,11 @@ OMP_NUM_THREADS=2 python -m unittest discover -s tests -v
 Launchers accept `MV_BASE_DIR`, `MV_DATA_DIR`, `MV_RUN_DIR`, and `MV_CHECKPOINT`.
 Inference also accepts `MV_TMIN_INPUT`, `MV_TMAX_INPUT`, `MV_PRCP_INPUT`,
 `MV_OUTPUT`, `MV_START_INDEX`, and `MV_END_INDEX` (for the bundled 1990 year).
+
+Data inputs must use the repository-local `daymet/` assets: `daymet/data/`,
+`daymet/dem/`, and `daymet/prepared/` for all workflows. Use `checkpoints/refine_6x.pt` for the released model.
+Original paths in provenance records are not runtime inputs or fallbacks.
+The shared Frontier software environment supplies dependencies only.
 
 ## References
 

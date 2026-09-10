@@ -7,7 +7,7 @@ use allocation cli138, ROCm 6.4.1 and the shared torch_rocm environment.
 Create `logs/` before `sbatch`: Slurm opens log paths before running the script.
 The launchers accept `MV_BASE_DIR`, `MV_DATA_DIR`, `MV_RUN_DIR`, `MV_CHECKPOINT`.
 The inference defaults are `daymet/prepared` and `checkpoints/refine_6x.pt`;
-training defaults to `artifacts/data/daymet_training` and writes under
+training defaults to `daymet/prepared` and writes under
 `artifacts/runs/refine_6x`. Set fresh run/output paths for experiments.
 
 Dependencies are recorded in requirements.txt and requirements-lock.txt.

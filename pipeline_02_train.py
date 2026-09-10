@@ -47,7 +47,7 @@ def load_training_layout(data_dir: Path):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("artifacts/data/daymet_training"))
+    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared"))
     parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/refine_6x"))
     checkpoint_group = parser.add_mutually_exclusive_group()
     checkpoint_group.add_argument("--resume", type=Path)
@@ -269,7 +269,7 @@ def main() -> None:
         seed_everything(args.seed + context.rank)
         manifest, patch_dataset_class = load_training_layout(args.data_dir)
         if any(not manifest["splits"][split]["samples"] for split in ("train", "val")):
-            raise ValueError("Training requires nonempty train/val splits; the demo contains test data only")
+            raise ValueError("Training requires nonempty train/val splits in the selected manifest")
         variables = tuple(args.variables or manifest["variables"])
         config = REFINEConfig(
             variable_names=variables,

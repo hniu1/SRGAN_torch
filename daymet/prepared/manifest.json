@@ -20,12 +20,24 @@
   ],
   "splits": {
     "train": {
-      "years": [],
-      "samples": 0
+      "years": [
+        1980,
+        1981,
+        1982,
+        1983,
+        1984,
+        1985,
+        1986,
+        1987
+      ],
+      "samples": 2922
     },
     "val": {
-      "years": [],
-      "samples": 0
+      "years": [
+        1988,
+        1989
+      ],
+      "samples": 731
     },
     "test": {
       "years": [
@@ -35,6 +47,16 @@
     }
   },
   "year_lengths": {
+    "1980": 366,
+    "1981": 365,
+    "1982": 365,
+    "1983": 365,
+    "1984": 366,
+    "1985": 365,
+    "1986": 365,
+    "1987": 365,
+    "1988": 366,
+    "1989": 365,
     "1990": 365
   },
   "transforms": {
@@ -83,10 +105,10 @@
   },
   "source": {
     "data_root": "../data",
-    "dem_root": "../dem",
-    "normalization_manifest": "../normalization.json",
     "lr_suffix": "0p25deg",
-    "hr_suffix": "trim"
+    "hr_suffix": "trim",
+    "dem_root": "../dem",
+    "normalization_manifest": "../normalization.json"
   },
   "data_quality": {
     "policy": "masked/nonfinite values are zero-filled after normalization and excluded per patch",

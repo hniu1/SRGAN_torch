@@ -18,7 +18,7 @@ module load miniforge3/23.11.0-0
 conda activate "${REFINE_ENV:-/lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm}"
 
 BASE_DIR=${MV_BASE_DIR:-$PWD}
-DATA_DIR=${MV_DATA_DIR:-${BASE_DIR}/artifacts/data/daymet_training}
+DATA_DIR=${MV_DATA_DIR:-${BASE_DIR}/daymet/prepared}
 mkdir -p "${BASE_DIR}/logs"
 
 cd "${BASE_DIR}"

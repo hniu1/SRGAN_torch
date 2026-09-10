@@ -1,15 +1,18 @@
 # Preparation and training: 1/4° to 1/24°
 
-Training is optional and separate from the inference demo. Copy paired
-`Daymet_ERA5_{tmin,tmax,prcp}_dy_YEAR_{0p25deg,trim}.nc` for 1980–1989 from the
-source directory listed in `daymet/README.md` into `daymet/data/` before preparing
-training. The 1990 pairs and both DEMs are already bundled. This adds roughly
-200 GB of uncompressed source data; verify available space before copying.
+The existing full Stage 2 prepared index is
+`daymet/prepared/`. Its manifest reads paired NetCDF
+files from repository-local `daymet/data/`, DEMs from `daymet/dem/`, and frozen
+normalization from `daymet/normalization.json`. The 1980–1990 input pairs are
+present in this workspace. Verify the required years exist after any handoff;
+the asset manifest inventories the original 1990 inputs and prepared arrays;
+`check_demo.py` also checks source-file presence for every split. Use the existing prepared index
+when it matches the experiment; to rebuild it:
 
 ```bash
 python pipeline_01_prepare.py --data-root daymet/data --dem-root daymet/dem \
   --normalization-manifest daymet/normalization.json \
-  --output-dir artifacts/data/daymet_training
+  --output-dir daymet/prepared
 ```
 
 Splits are chronological: training 1980–1987, validation 1988–1989, test 1990.
@@ -20,7 +23,7 @@ on training data; this preparation command does not fit new normalization.
 
 After authorization, submit `slurm/02_train.slurm` with the prepared training
 manifest. `submit_pipeline.sh` chains prepare/train/evaluate with dependencies.
-The test-only demo manifest cannot be used for training.
+The shared manifest contains all three chronological splits.
 
 Training requests two nodes, four GPU tasks/node, six CPUs/task, and 12 hours.
 It uses core 8, halo 2 (12×12 input / 72×72 output), 8 patches/day, 4 validation

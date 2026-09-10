@@ -25,7 +25,7 @@ def main():
     for asset in assets:
         path = ROOT / asset['path']
         if not path.is_file() or path.stat().st_size != asset['bytes']:
-            raise ValueError(f'Missing or wrong-sized asset: {path}; run scripts/restore_demo.py')
+            raise ValueError(f'Missing or wrong-sized asset: {path}; unpack the complete demo archive')
         if args.hash_all or path.suffix == '.pt':
             if digest(path) != asset['sha256']:
                 raise ValueError(f'Checksum mismatch: {path}')
@@ -47,6 +47,23 @@ def main():
                                 raise ValueError(f'{name}: {key} {attr} differ')
     from refine_downscaling.stage2_data import Stage2FullFieldDataset
     dataset = Stage2FullFieldDataset(ROOT / 'daymet/prepared', 'test')
+    manifest = dataset.manifest
+    for key, expected in (('data_root', ROOT / 'daymet/data'),
+                          ('dem_root', ROOT / 'daymet/dem'),
+                          ('normalization_manifest', ROOT / 'daymet/normalization.json')):
+        if Path(manifest['source'][key]).resolve() != expected.resolve():
+            raise ValueError(f'Prepared manifest must use local {expected}')
+    for split, expected_days in (('train', 2922), ('val', 731), ('test', 365)):
+        info = manifest['splits'][split]
+        time = np.load(ROOT / f'daymet/prepared/shared/time_{split}.npy')
+        if info['samples'] != expected_days or len(time) != expected_days:
+            raise ValueError(f'Unexpected {split} split length')
+        for year in info['years']:
+            for name in manifest['variables']:
+                for suffix in ('0p25deg', 'trim'):
+                    path = ROOT / f'daymet/data/Daymet_ERA5_{name}_dy_{year}_{suffix}.nc'
+                    if not path.is_file():
+                        raise ValueError(f'Missing local {split} input: {path}')
     if len(dataset) != 365 or dataset.scale_factor != 6:
         raise ValueError('Demo must contain the 365-day 1990 test split at 6x')
     import torch

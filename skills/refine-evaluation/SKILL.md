@@ -5,6 +5,13 @@ description: Evaluate REFINE downscaling against held-out Daymet data, summarize
 
 # REFINE Evaluation
 
+Use repository-local `daymet/data/`, `daymet/dem/`, and `daymet/prepared/`
+for demo data, with `checkpoints/refine_6x.pt` for the pretrained model.
+The same prepared index contains training, validation, and test splits.
+Do not use original `proj-shared` data paths from provenance records as runtime
+inputs or fallbacks. If assets are missing, obtain the complete demo archive.
+
+
 Evaluate a named checkpoint on a named data split and keep the run identity attached to every reported metric and plot.
 
 ## Workflow

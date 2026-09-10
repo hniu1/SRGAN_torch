@@ -16,7 +16,7 @@ def year_range(start: int, end: int) -> list[int]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/data/daymet_training"))
+    parser.add_argument("--output-dir", type=Path, default=Path("daymet/prepared"))
     parser.add_argument("--normalization-manifest", type=Path, default=Path("daymet/normalization.json"))
     parser.add_argument("--variables", nargs="+", default=["tmin", "tmax", "prcp"])
     parser.add_argument("--train-start", type=int, default=1980)

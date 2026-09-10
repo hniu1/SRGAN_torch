@@ -5,6 +5,13 @@ description: Prepare data, train or resume REFINE models, and operate the reposi
 
 # REFINE Operations
 
+Use repository-local `daymet/data/`, `daymet/dem/`, and `daymet/prepared/`
+for demo data, with `checkpoints/refine_6x.pt` for the pretrained model.
+The same prepared index contains training, validation, and test splits.
+Do not use original `proj-shared` data paths from provenance records as runtime
+inputs or fallbacks. If assets are missing, obtain the complete demo archive.
+
+
 Operate the single-stage 6× REFINE workflow conservatively on Frontier. Read-only scheduler and filesystem inspection may proceed directly; state-changing scheduler actions require explicit user authorization.
 
 ## Workflow

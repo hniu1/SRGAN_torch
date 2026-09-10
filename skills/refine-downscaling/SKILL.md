@@ -4,6 +4,13 @@ description: Validate Daymet inputs and run pretrained REFINE inference from 1/4
 ---
 # REFINE downscaling
 
+Use repository-local `daymet/data/`, `daymet/dem/`, and `daymet/prepared/`
+for demo data, with `checkpoints/refine_6x.pt` for the pretrained model.
+The same prepared index contains training, validation, and test splits.
+Do not use original `proj-shared` data paths from provenance records as runtime
+inputs or fallbacks. If assets are missing, obtain the complete demo archive.
+
+
 Locate the repository containing `pipeline_04_infer.py`. Run commands from that
 root. The only route is 6×, with tmin/tmax/prcp together; `stage2` is its legacy
 registry identifier.

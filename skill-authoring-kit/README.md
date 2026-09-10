@@ -14,3 +14,8 @@ Start with the repository README, then use:
 
 The ready-to-use skills are in `../skills/`. Training guidance remains in
 `../skills/refine-ops/references/training.md`.
+
+Data inputs must use the repository-local `daymet/` assets: `daymet/data/`,
+`daymet/dem/`, and `daymet/prepared/` for all workflows. Use `checkpoints/refine_6x.pt` for the released model.
+Original paths in provenance records are not runtime inputs or fallbacks.
+The shared Frontier software environment supplies dependencies only.
