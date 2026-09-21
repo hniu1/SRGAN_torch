@@ -9,3 +9,9 @@ gcm_ds/
 output/
 models/
 core
+docs/reference_1990/
+daymet/
+checkpoints/
+dist/
+archive/
+artifacts/
