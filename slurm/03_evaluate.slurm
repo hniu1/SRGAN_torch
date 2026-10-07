@@ -19,8 +19,9 @@ module load miniforge3/23.11.0-0
 conda activate "${REFINE_ENV:-/lustre/orion/proj-shared/cli138/7hn/envs/torch_rocm}"
 
 BASE_DIR=${MV_BASE_DIR:-$PWD}
-DATA_DIR=${MV_DATA_DIR:-${BASE_DIR}/daymet/prepared}
-RUN_DIR=${MV_RUN_DIR:-${BASE_DIR}/artifacts/runs/refine_6x}
+STAGE=${MV_STAGE:-1}
+DATA_DIR=${MV_DATA_DIR:-${BASE_DIR}/daymet/prepared/stage${STAGE}}
+RUN_DIR=${MV_RUN_DIR:-${BASE_DIR}/artifacts/runs/refine_stage${STAGE}_5x}
 export MIOPEN_USER_DB_PATH=/tmp/miopen-mveval-s2-${USER}-${SLURM_JOB_ID}
 export MIOPEN_CUSTOM_CACHE_DIR=${MIOPEN_USER_DB_PATH}
 mkdir -p "${MIOPEN_USER_DB_PATH}" "${BASE_DIR}/logs"
@@ -28,8 +29,8 @@ mkdir -p "${MIOPEN_USER_DB_PATH}" "${BASE_DIR}/logs"
 cd "${BASE_DIR}"
 srun python -u pipeline_03_evaluate.py \
   --data-dir "${DATA_DIR}" \
-  --checkpoint "${MV_CHECKPOINT:-${BASE_DIR}/checkpoints/refine_6x.pt}" \
-  --output-dir "${RUN_DIR}/test_1990" \
+  --checkpoint "${MV_CHECKPOINT:-${RUN_DIR}/best.pt}" \
+  --output-dir "${MV_EVAL_OUTPUT:-${RUN_DIR}/test}" \
   --split test \
   --batch-size 1 \
   --amp \

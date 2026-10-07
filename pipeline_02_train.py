@@ -18,7 +18,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, DistributedSampler
 
-from refine_downscaling.data import MultivariablePatchDataset, load_manifest
+from refine_downscaling.data import MultivariablePatchDataset, load_manifest, validate_checkpoint_manifest
 from refine_downscaling.distributed import (
     all_reduce_mean,
     barrier,
@@ -47,8 +47,8 @@ def load_training_layout(data_dir: Path):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared"))
-    parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/refine_6x"))
+    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared/stage1"))
+    parser.add_argument("--run-dir", type=Path, default=Path("artifacts/runs/refine_stage1_5x"))
     checkpoint_group = parser.add_mutually_exclusive_group()
     checkpoint_group.add_argument("--resume", type=Path)
     checkpoint_group.add_argument(
@@ -315,7 +315,7 @@ def main() -> None:
             backbone_initialization = initialize_backbone(model, args.init_backbone)
             if context.is_main:
                 print(
-                    "Initialized Stage-2 representation from "
+                    "Initialized REFINE representation from "
                     f"{args.init_backbone}: {backbone_initialization['loaded_tensors']}/"
                     f"{backbone_initialization['eligible_tensors']} tensors",
                     flush=True,
@@ -344,6 +344,7 @@ def main() -> None:
         patience = 0
         if args.resume:
             checkpoint = torch.load(args.resume, map_location="cpu", weights_only=False)
+            validate_checkpoint_manifest(checkpoint, manifest)
             if checkpoint["model_config"] != config.to_dict():
                 raise ValueError("Resume checkpoint model configuration does not match CLI configuration")
             unwrap_model(model).load_state_dict(checkpoint["model"])

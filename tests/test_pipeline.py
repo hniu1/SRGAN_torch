@@ -298,6 +298,7 @@ class PreparationTests(unittest.TestCase):
 class ModelTests(unittest.TestCase):
     def test_arbitrary_shape_and_zero_residual(self) -> None:
         config = REFINEConfig(
+            scale_factor=6,
             embed_dim=24,
             num_groups=1,
             blocks_per_group=2,

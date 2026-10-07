@@ -1,4 +1,4 @@
-"""Lazy NetCDF patch/full-field datasets for 0.25-degree to 1/24-degree Stage 2."""
+"""Lazy NetCDF patch/full-field datasets for either REFINE downscaling stage."""
 
 from __future__ import annotations
 
@@ -70,6 +70,8 @@ class _Stage2SourceMixin:
         self.lr_shape = tuple(int(value) for value in self.manifest["lr_shape"])
         self.hr_shape = tuple(int(value) for value in self.manifest["hr_shape"])
         self.time = np.load(self.data_dir / "shared" / f"time_{split}.npy", mmap_mode="r")
+        index_path = self.data_dir / "shared" / f"file_index_{split}.npy"
+        self.file_index = np.load(index_path, mmap_mode="r") if index_path.exists() else None
         self.data_root = Path(self.manifest["source"]["data_root"])
         self.lr_suffix = str(self.manifest["source"]["lr_suffix"])
         self.hr_suffix = str(self.manifest["source"]["hr_suffix"])
@@ -94,6 +96,11 @@ class _Stage2SourceMixin:
         return dataset
 
     def _field(self, variable: str, year: int, suffix: str):
+        if self.manifest["source"].get("layout") == "daymet_tva":
+            from .daymet_prepare import daymet_source_path
+
+            path = daymet_source_path(self.data_root, variable, year, suffix)
+            return self._dataset(path).variables[variable]
         path = stage2_source_path(self.data_root, variable, year, suffix)
         return self._dataset(path).variables[f"{variable}_dy"]
 
@@ -219,7 +226,7 @@ class Stage2NetCDFPatchDataset(_Stage2SourceMixin, Dataset):
         sample = index // self.patches_per_day
         patch_index = index % self.patches_per_day
         year, day_of_year = (int(value) for value in self.time[sample])
-        day = day_of_year - 1
+        day = int(self.file_index[sample]) if self.file_index is not None else day_of_year - 1
         core_row, core_col = self._origin(patch_index)
         row, col = core_row - self.halo, core_col - self.halo
         size = self.context_size
@@ -271,7 +278,7 @@ class Stage2NetCDFPatchDataset(_Stage2SourceMixin, Dataset):
 
 
 class Stage2FullFieldDataset(_Stage2SourceMixin, Dataset):
-    """Lazily read one complete 0.25-degree/1/24-degree day for evaluation."""
+    """Lazily read one complete aligned LR/HR day for evaluation."""
 
     def __init__(
         self, data_dir: Path, split: str = "test", variable_names: Sequence[str] | None = None
@@ -298,7 +305,7 @@ class Stage2FullFieldDataset(_Stage2SourceMixin, Dataset):
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         year, day_of_year = (int(value) for value in self.time[index])
-        day = day_of_year - 1
+        day = int(self.file_index[index]) if self.file_index is not None else day_of_year - 1
         lr_values, lr_valid_fields = [], []
         hr_values, hr_valid_fields = [], []
         for variable in self.variable_names:
@@ -310,8 +317,8 @@ class Stage2FullFieldDataset(_Stage2SourceMixin, Dataset):
             hr_valid_fields.append(valid)
         lr_raw = np.stack(lr_values)
         target_raw = np.stack(hr_values)
-        valid_lr = np.logical_and.reduce(lr_valid_fields)
-        valid_hr = np.logical_and.reduce(hr_valid_fields)
+        valid_lr = np.logical_and.reduce(lr_valid_fields) & (self.static_lr[-1] > 0.5)
+        valid_hr = np.logical_and.reduce(hr_valid_fields) & (self.static_hr[-1] > 0.5)
         lr_scaled = transform_channels_numpy(
             np.nan_to_num(lr_raw, nan=0.0, posinf=0.0, neginf=0.0),
             self.variable_names, self.specs,

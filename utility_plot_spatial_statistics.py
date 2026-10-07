@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot 1990 REFINE temporal statistics against prepared Daymet truth."""
+"""Plot REFINE temporal statistics against prepared Daymet truth."""
 
 from __future__ import annotations
 
@@ -79,7 +79,11 @@ def _grid_coordinates(manifest: dict, split: str, variable: str) -> tuple[np.nda
         return np.arange(width, dtype=np.float64), np.arange(height, dtype=np.float64)
     year = int(manifest["splits"][split]["years"][0])
     source = manifest["source"]
-    if manifest.get("storage_layout") == "netcdf_patch_index":
+    if source.get("layout") == "daymet_tva":
+        from refine_downscaling.daymet_prepare import daymet_source_path
+
+        path = daymet_source_path(Path(source["data_root"]), variable, year, str(source["hr_suffix"]))
+    elif manifest.get("storage_layout") == "netcdf_patch_index":
         from refine_downscaling.stage2_prepare import stage2_source_path
 
         path = stage2_source_path(
@@ -187,6 +191,9 @@ class TruthTileReader:
             self.time = np.asarray(
                 np.load(self.data_dir / "shared" / f"time_{split}.npy", mmap_mode="r")[:days]
             )
+            index_path = self.data_dir / "shared" / f"file_index_{split}.npy"
+            self.file_index = np.load(index_path, mmap_mode="r")[:days] if index_path.exists() else None
+            self.domain_valid = np.load(self.data_dir / "shared" / "valid_hr.npy", mmap_mode="r") > 0.5
         elif self.layout != "variable_separable_npy":
             raise ValueError(f"Unsupported truth layout {self.layout!r}")
 
@@ -200,11 +207,17 @@ class TruthTileReader:
             from refine_downscaling.stage2_prepare import stage2_source_path
 
             source = self.manifest["source"]
-            path = stage2_source_path(
-                Path(source["data_root"]), variable, year, str(source["hr_suffix"])
-            )
+            if source.get("layout") == "daymet_tva":
+                from refine_downscaling.daymet_prepare import daymet_source_path
+
+                path = daymet_source_path(Path(source["data_root"]), variable, year, str(source["hr_suffix"]))
+            else:
+                path = stage2_source_path(
+                    Path(source["data_root"]), variable, year, str(source["hr_suffix"])
+                )
             self.handles[key] = Dataset(path)
-        return self.handles[key].variables[f"{variable}_dy"]
+        name = variable if self.manifest["source"].get("layout") == "daymet_tva" else f"{variable}_dy"
+        return self.handles[key].variables[name]
 
     def read(self, variable: str, row0: int, row1: int) -> tuple[np.ndarray, np.ndarray]:
         if self.layout == "variable_separable_npy":
@@ -223,12 +236,12 @@ class TruthTileReader:
         valid = np.empty_like(values, dtype=bool)
         for year in np.unique(self.time[:, 0]):
             positions = np.flatnonzero(self.time[:, 0] == year)
-            day_indices = self.time[positions, 1].astype(np.int64) - 1
+            day_indices = self.file_index[positions] if self.file_index is not None else self.time[positions, 1].astype(np.int64) - 1
             field = self._stage2_field(variable, int(year))
             raw = np.asarray(
                 np.ma.filled(field[day_indices, row0:row1, :], np.nan), dtype=np.float32
             )
-            current_valid = np.isfinite(raw)
+            current_valid = np.isfinite(raw) & self.domain_valid[row0:row1]
             conversion = self.manifest.get("variable_metadata", {}).get(variable, {}).get(
                 "unit_conversion"
             )
@@ -252,6 +265,7 @@ def render_spatial_comparison_plots(
     variable_names: Sequence[str],
     metadata: dict,
     extent: tuple[float, float, float, float],
+    period_label: str = "1990",
 ) -> list[Path]:
     """Render comparison figures from existing spatial-statistic arrays."""
     plot_dir = Path(output_dir) / "spatial_statistics"
@@ -290,7 +304,7 @@ def render_spatial_comparison_plots(
             fraction=0.055, aspect=28,
         )
         label = "mean" if percentile is None else f"{int(percentile)}th percentile"
-        figure.suptitle(f"1990 {variable} {label}{_unit_label(metadata, variable)}", fontsize=15)
+        figure.suptitle(f"{period_label} {variable} {label}{_unit_label(metadata, variable)}", fontsize=15)
         for axis in axes:
             _format_map_axis(axis, extent)
         path = plot_dir / f"{key}_comparison.png"
@@ -380,9 +394,13 @@ def create_spatial_comparison_plots(
     finally:
         reader.close()
 
-    np.savez_compressed(output_dir / "spatial_statistics_1990.npz", **arrays)
+    is_tva = manifest.get("source", {}).get("layout") == "daymet_tva"
+    statistics_file = "spatial_statistics.npz" if is_tva else "spatial_statistics_1990.npz"
+    years = manifest["splits"][split]["years"]
+    period_label = f"{split} {min(years)}–{max(years)} ({days} records)" if is_tva else "1990"
+    np.savez_compressed(output_dir / statistics_file, **arrays)
     plot_paths = render_spatial_comparison_plots(
-        arrays, output_dir, variable_names, metadata, extent
+        arrays, output_dir, variable_names, metadata, extent, period_label
     )
     index = {
         "split": split,
@@ -390,7 +408,7 @@ def create_spatial_comparison_plots(
         "variables": list(variable_names),
         "statistics": [path.stem.removesuffix("_comparison") for path in plot_paths],
         "plots": [str(path) for path in plot_paths],
-        "arrays": str(output_dir / "spatial_statistics_1990.npz"),
+        "arrays": str(output_dir / statistics_file),
         "color_scale_policy": "fixed variable/statistic ranges; physical fields are non-bias, model-minus-Daymet is bias",
         "boundaries": "Natural Earth 1:50m countries plus USA/Canada/Mexico states and provinces",
         "colorbars": "horizontal below each panel",
@@ -401,7 +419,7 @@ def create_spatial_comparison_plots(
         summary = json.loads(summary_path.read_text())
         summary["spatial_comparison_plots"] = [str(path.resolve()) for path in plot_paths]
         summary["spatial_statistics"] = str(
-            (output_dir / "spatial_statistics_1990.npz").resolve()
+            (output_dir / statistics_file).resolve()
         )
         summary_path.write_text(json.dumps(summary, indent=2) + "\n")
     return plot_paths
@@ -423,13 +441,18 @@ def replot_saved_spatial_statistics(
     variable_names = tuple(summary["variables"])
     longitude, latitude = _grid_coordinates(manifest, split, variable_names[0])
     extent = _image_extent(longitude, latitude)
-    with np.load(evaluation_dir / "spatial_statistics_1990.npz") as arrays:
+    is_tva = manifest.get("source", {}).get("layout") == "daymet_tva"
+    statistics_file = "spatial_statistics.npz" if is_tva else "spatial_statistics_1990.npz"
+    years = manifest["splits"][split]["years"]
+    period_label = f"{split} {min(years)}–{max(years)} ({summary['days']} records)" if is_tva else "1990"
+    with np.load(evaluation_dir / statistics_file) as arrays:
         return render_spatial_comparison_plots(
             arrays,
             evaluation_dir,
             variable_names,
             manifest.get("variable_metadata", {}),
             extent,
+            period_label,
         )
 
 
@@ -442,7 +465,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reuse-statistics",
         action="store_true",
-        help="only rerender plots from the existing spatial_statistics_1990.npz",
+        help="only rerender plots from the existing spatial statistics archive",
     )
     return parser
 

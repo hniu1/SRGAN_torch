@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from refine_downscaling.data import FullFieldDataset
+from refine_downscaling.data import FullFieldDataset, validate_checkpoint_manifest
 from refine_downscaling.model import REFINE, REFINEConfig, count_parameters
 from refine_downscaling.transforms import inverse_channels_numpy
 from utility_plot_spatial_statistics import create_spatial_comparison_plots
@@ -33,9 +33,9 @@ def load_evaluation_dataset(data_dir: Path, split: str, variable_names: tuple[st
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared"))
-    parser.add_argument("--checkpoint", type=Path, default=Path("checkpoints/refine_6x.pt"))
-    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/runs/refine_6x/test_1990"))
+    parser.add_argument("--data-dir", type=Path, default=Path("daymet/prepared/stage1"))
+    parser.add_argument("--checkpoint", type=Path, default=Path("artifacts/runs/refine_stage1_5x/best.pt"))
+    parser.add_argument("--output-dir", type=Path, default=Path("artifacts/runs/refine_stage1_5x/test"))
     parser.add_argument("--split", choices=["train", "val", "test"], default="test")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=0)
@@ -108,6 +108,7 @@ def main() -> None:
     dataset, storage_layout = load_evaluation_dataset(
         args.data_dir, args.split, config.variable_names
     )
+    validate_checkpoint_manifest(checkpoint, dataset.manifest)
     model = REFINE(config).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()

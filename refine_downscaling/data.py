@@ -14,6 +14,17 @@ from torch.utils.data import Dataset
 from .transforms import TransformSpec, specs_from_manifest, transform_channels_numpy
 
 
+def validate_checkpoint_manifest(checkpoint: dict, manifest: dict) -> None:
+    """Reject stage/grid/normalization mismatches even when model shapes match."""
+    if int(checkpoint["model_config"]["scale_factor"]) != int(manifest["scale_factor"]):
+        raise ValueError("Checkpoint and manifest scale factors differ")
+    source = checkpoint.get("data_manifest", {})
+    for key in ("stage", "lr_shape", "hr_shape", "lr_resolution_degrees", "hr_resolution_degrees",
+                "transforms", "static", "normalization_fit", "grid_bounds"):
+        if key in source and source[key] != manifest.get(key):
+            raise ValueError(f"Checkpoint and manifest {key} differ")
+
+
 def load_manifest(data_dir: Path) -> dict:
     path = Path(data_dir) / "manifest.json"
     if not path.exists():

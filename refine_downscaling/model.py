@@ -20,7 +20,7 @@ class REFINEConfig:
     num_heads: int = 6
     window_size: int = 8
     mlp_ratio: float = 2.0
-    scale_factor: int = 6
+    scale_factor: int = 5
     static_lr_channels: int = 4
     static_hr_channels: int = 4
     variable_dropout: float = 0.1
@@ -34,11 +34,11 @@ class REFINEConfig:
         if self.scale_factor < 1:
             raise ValueError("scale_factor must be positive")
         remainder = self.scale_factor
-        for factor in (2, 3):
+        for factor in (2, 3, 5):
             while remainder % factor == 0:
                 remainder //= factor
         if remainder != 1:
-            raise ValueError("scale_factor must factor into PixelShuffle stages of 2 and/or 3")
+            raise ValueError("scale_factor must factor into PixelShuffle stages of 2, 3 and/or 5")
         if not 0.0 <= self.variable_dropout < 1.0:
             raise ValueError("variable_dropout must be in [0, 1)")
 
@@ -345,7 +345,7 @@ class REFINE(nn.Module):
         terrain_channels = config.static_hr_channels + 1  # HR predictors plus elevation anomaly
         stages = []
         remainder = config.scale_factor
-        for factor in (2, 3):
+        for factor in (2, 3, 5):
             while remainder % factor == 0:
                 stages.append(factor)
                 remainder //= factor

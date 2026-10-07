@@ -104,7 +104,7 @@ def read_variable(path: Path, variable: str) -> np.ndarray:
 
 def read_variable_metadata(path: Path, variable: str) -> dict[str, str]:
     with _netcdf_dataset(path) as dataset:
-        field = dataset.variables[f"{variable}_dy"]
+        field = dataset.variables[variable if variable in dataset.variables else f"{variable}_dy"]
         source_units = str(getattr(field, "units", ""))
         canonical_units, conversion = _canonical_units(variable, source_units)
         return {
